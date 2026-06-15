@@ -1,8 +1,7 @@
 import { PAL, TILE, SPRITE_SCALE } from '../utils/SnesPalettes.js';
-import { SnesUI } from '../utils/SnesUI.js';
+import { GameUI, UI } from '../utils/GameUI.js';
 import { SceneTransition } from '../utils/SceneTransition.js';
 import { AssetService } from '../services/AssetService.js';
-import { FONTS } from '../config/GameConfig.js';
 
 export class MainMenuScene extends Phaser.Scene {
   constructor() {
@@ -19,7 +18,7 @@ export class MainMenuScene extends Phaser.Scene {
     this.drawTitlePanel(width);
     this.drawMenuPanel(width, height);
     this.drawHeroPreview(width, height);
-    SnesUI.drawScreenBorder(this, width, height);
+    GameUI.drawScreenBorder(this, width, height);
 
     SceneTransition.onEnter(this, 300);
   }
@@ -27,7 +26,6 @@ export class MainMenuScene extends Phaser.Scene {
   drawBackground(width, height) {
     const g = this.add.graphics().setDepth(0);
 
-    // SNES sky — 3 flat bands
     g.fillStyle(0x3070b8);
     g.fillRect(0, 0, width, height * 0.45);
     g.fillStyle(0x4890d0);
@@ -35,7 +33,6 @@ export class MainMenuScene extends Phaser.Scene {
     g.fillStyle(0x287028);
     g.fillRect(0, height * 0.57, width, height * 0.43);
 
-    // Pixel clouds
     const drawCloud = (cx, cy) => {
       g.fillStyle(0xf0f0f8);
       g.fillRect(cx, cy, 24, 8);
@@ -47,7 +44,6 @@ export class MainMenuScene extends Phaser.Scene {
     drawCloud(520, 55);
     drawCloud(740, 35);
 
-    // Mountains
     g.fillStyle(0x185818);
     for (let i = 0; i < 7; i++) {
       const mx = i * 150 - 10;
@@ -55,7 +51,6 @@ export class MainMenuScene extends Phaser.Scene {
       g.fillTriangle(mx, height * 0.57, mx + 70, height * 0.57, mx + 35, height * 0.57 - mh);
     }
 
-    // Tiled meadow
     const displayTile = TILE * SPRITE_SCALE;
     const groundY = height * 0.57;
     const rows = Math.ceil((height - groundY) / displayTile) + 1;
@@ -65,7 +60,7 @@ export class MainMenuScene extends Phaser.Scene {
       for (let col = 0; col < cols; col++) {
         const tileIdx = (col + row) % 2 === 0 ? 0 : 1;
         if ((col + row) % 5 === 0) {
-          this.add.image(col * displayTile, groundY + row * displayTile, 'tileset', `tile_2`)
+          this.add.image(col * displayTile, groundY + row * displayTile, 'tileset', 'tile_2')
             .setOrigin(0, 0).setDisplaySize(displayTile, displayTile).setDepth(1);
         } else {
           this.add.image(col * displayTile, groundY + row * displayTile, 'tileset', `tile_${tileIdx}`)
@@ -76,48 +71,42 @@ export class MainMenuScene extends Phaser.Scene {
   }
 
   drawTitlePanel(width) {
-    const panelW = 420;
-    const panelH = 72;
+    const panelW = 460;
+    const panelH = 88;
     const panelX = width / 2 - panelW / 2;
-    const panelY = 48;
+    const panelY = 40;
 
-    SnesUI.drawWindow(this, panelX, panelY, panelW, panelH, 10);
+    GameUI.drawPanel(this, panelX, panelY, panelW, panelH, 10);
 
-    this.add.text(width / 2, panelY + 22, 'ELDERGROVE', {
-      fontFamily: FONTS.PIXEL,
-      fontSize: '32px',
-      color: PAL.uiGold,
-      resolution: 2,
-    }).setOrigin(0.5).setDepth(11);
+    GameUI.titleText(this, width / 2, panelY + 22, 'Eldergrove', {
+      size: '40px', depth: 11, origin: 0.5,
+    });
 
-    this.add.text(width / 2, panelY + 50, 'Chronicles of the Arcane', {
-      fontFamily: FONTS.PIXEL,
-      fontSize: '11px',
-      color: PAL.uiTextDim,
-      resolution: 2,
-    }).setOrigin(0.5).setDepth(11);
+    GameUI.labelText(this, width / 2, panelY + 58, 'Chronicles of the Arcane', {
+      size: '15px', depth: 11, origin: 0.5,
+    });
   }
 
   drawMenuPanel(width, height) {
-    const boxW = 300;
-    const boxH = 130;
+    const boxW = 320;
+    const boxH = 148;
     const boxX = width / 2 - boxW / 2;
-    const boxY = height * 0.58;
+    const boxY = height * 0.56;
 
-    SnesUI.drawWindow(this, boxX, boxY, boxW, boxH, 20);
+    GameUI.drawPanel(this, boxX, boxY, boxW, boxH, 20);
 
-    SnesUI.createMenuItem(this, boxX + 16, boxY + 16, 'Start New Game', () => {
+    GameUI.createMenuItem(this, boxX + 20, boxY + 18, 'Start New Game', () => {
       SceneTransition.toGame(this);
-    });
+    }, { width: boxW - 40 });
 
-    SnesUI.snesText(this, boxX + 24, boxY + 58, 'WASD / Arrows — Move', {
-      size: '11px', color: PAL.uiTextDim, depth: 21,
+    GameUI.labelText(this, boxX + 24, boxY + 68, 'WASD / Arrows — Move', {
+      size: '14px', depth: 21,
     });
-    SnesUI.snesText(this, boxX + 24, boxY + 76, 'Auto-attack nearest foe', {
-      size: '11px', color: PAL.uiTextDim, depth: 21,
+    GameUI.labelText(this, boxX + 24, boxY + 88, 'Auto-attack nearest foe', {
+      size: '14px', depth: 21,
     });
-    SnesUI.snesText(this, boxX + 24, boxY + 98, 'ESC — Menu (in game)', {
-      size: '11px', color: PAL.uiTextDim, depth: 21,
+    GameUI.labelText(this, boxX + 24, boxY + 108, 'ESC — Menu (in game)', {
+      size: '14px', depth: 21,
     });
   }
 

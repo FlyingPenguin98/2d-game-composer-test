@@ -87,5 +87,8 @@ export const TEXTURES = {
 };
 
 export const FONTS = {
+  TITLE: '"Cinzel", Georgia, "Times New Roman", serif',
+  BODY: '"Nunito Sans", "Segoe UI", system-ui, sans-serif',
+  /** Legacy — avoid for new UI. */
   PIXEL: '"Courier New", Courier, monospace',
 };

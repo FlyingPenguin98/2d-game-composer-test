@@ -6,7 +6,7 @@ import { WorldMap } from '../world/WorldMap.js';
 import { WorldRenderer } from '../world/WorldRenderer.js';
 import { RunState, getSpawnIntervalForTime } from '../services/RunState.js';
 import { PAL } from '../utils/SnesPalettes.js';
-import { SnesUI } from '../utils/SnesUI.js';
+import { GameUI, UI } from '../utils/GameUI.js';
 import { SceneTransition } from '../utils/SceneTransition.js';
 import { AssetService } from '../services/AssetService.js';
 import { UpgradePicker } from '../ui/UpgradePicker.js';
@@ -23,7 +23,6 @@ import {
   GAME,
   COMBAT,
   XP,
-  FONTS,
 } from '../config/GameConfig.js';
 import {
   Hitboxes,
@@ -114,37 +113,47 @@ export class GameScene extends Phaser.Scene {
   }
 
   createUI(width, _height) {
-    SnesUI.drawWindow(this, 8, 8, width - 16, 52, 100);
+    const hudX = 12;
+    const hudY = 10;
+    const hudW = width - 24;
+    const hudH = 58;
+
+    this.hudGfx = this.add.graphics().setDepth(100).setScrollFactor(0);
+    GameUI.drawHudBar(this.hudGfx, hudX, hudY, hudW, hudH);
 
     this.hearts = [];
     for (let i = 0; i < 10; i++) {
-      const heart = this.add.image(24 + i * 18, 26, 'heart')
+      const heart = this.add.image(hudX + 16 + i * 18, hudY + 22, 'heart')
         .setScale(2).setDepth(101).setScrollFactor(0);
       this.hearts.push(heart);
     }
 
-    this.timerText = SnesUI.snesText(this, width / 2, 16, '0:00', {
-      size: '16px', color: PAL.uiGold, depth: 101,
-    }).setOrigin(0.5, 0);
+    this.timerText = GameUI.titleText(this, width / 2, hudY + 10, '0:00', {
+      size: '22px', depth: 101, origin: 0.5,
+    });
 
-    this.levelText = SnesUI.snesText(this, width / 2, 32, 'LV 1', {
-      size: '10px', color: PAL.uiTextDim, depth: 101,
-    }).setOrigin(0.5, 0);
+    this.levelText = GameUI.labelText(this, width / 2, hudY + 36, 'Level 1', {
+      size: '14px', color: UI.textGold, depth: 101, origin: 0.5,
+    });
 
-    this.scoreText = SnesUI.snesText(this, width - 24, 18, 'SCORE 0000', {
-      size: '14px', color: PAL.uiGold, depth: 101,
-    }).setOrigin(1, 0);
+    this.scoreText = GameUI.bodyText(this, hudX + hudW - 14, hudY + 12, '0', {
+      size: '18px', color: UI.textGold, depth: 101, origin: [1, 0],
+    });
 
-    this.killsText = SnesUI.snesText(this, width - 24, 34, 'KILLS 0', {
-      size: '10px', color: PAL.uiTextDim, depth: 101,
-    }).setOrigin(1, 0);
+    GameUI.labelText(this, hudX + hudW - 14, hudY + 34, 'SCORE', {
+      size: '11px', depth: 101, origin: [1, 0],
+    });
 
-    const barX = 20;
-    const barY = 48;
-    const barW = width - 40;
+    this.killsText = GameUI.labelText(this, hudX + hudW - 14, hudY + 48, 'Kills 0', {
+      size: '12px', depth: 101, origin: [1, 0],
+    });
+
+    const barX = hudX + 14;
+    const barY = hudY + hudH + 6;
+    const barW = hudW - 28;
     this.xpBarBg = this.add.graphics().setDepth(101).setScrollFactor(0);
     this.xpBarFill = this.add.graphics().setDepth(102).setScrollFactor(0);
-    this.xpBarBounds = { x: barX, y: barY, w: barW, h: 6 };
+    this.xpBarBounds = { x: barX, y: barY, w: barW, h: 8 };
     this.drawXpBar();
   }
 
@@ -154,18 +163,16 @@ export class GameScene extends Phaser.Scene {
     const ratio = rs.xpToNext > 0 ? Phaser.Math.Clamp(rs.xp / rs.xpToNext, 0, 1) : 0;
 
     this.xpBarBg.clear();
-    this.xpBarBg.fillStyle(parseInt(PAL.uiShadow.slice(1), 16));
-    this.xpBarBg.fillRect(x, y, w, h);
+    GameUI.drawProgressBar(this.xpBarBg, x, y, w, h, 0);
 
     this.xpBarFill.clear();
     if (ratio > 0) {
-      this.xpBarFill.fillStyle(parseInt(PAL.slime1.slice(1), 16));
-      this.xpBarFill.fillRect(x, y, Math.max(2, w * ratio), h);
+      GameUI.drawProgressBar(this.xpBarFill, x, y, w, h, ratio);
     }
   }
 
   updateXpHud() {
-    this.levelText.setText(`LV ${this.runState.level}`);
+    this.levelText.setText(`Level ${this.runState.level}`);
     this.drawXpBar();
   }
 
@@ -378,14 +385,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   spawnDamageNumber(x, y, damage) {
-    const txt = this.add.text(x, y - 10, String(damage), {
-      fontFamily: FONTS.PIXEL,
-      fontSize: '11px',
+    const txt = GameUI.bodyText(this, x, y - 10, String(damage), {
+      size: '14px',
       color: '#ffffff',
-      stroke: '#000000',
-      strokeThickness: 2,
-      resolution: 2,
-    }).setOrigin(0.5).setDepth(20);
+      depth: 20,
+      origin: 0.5,
+      stroke: 3,
+    });
 
     this.tweens.add({
       targets: txt,
@@ -427,8 +433,8 @@ export class GameScene extends Phaser.Scene {
 
   addScore(points) {
     this.runState.addKill(points);
-    this.scoreText.setText(`SCORE ${String(this.runState.score).padStart(4, '0')}`);
-    this.killsText.setText(`KILLS ${this.runState.kills}`);
+    this.scoreText.setText(String(this.runState.score).padStart(4, '0'));
+    this.killsText.setText(`Kills ${this.runState.kills}`);
   }
 
   updateHearts() {
@@ -459,38 +465,46 @@ export class GameScene extends Phaser.Scene {
     const { width, height } = this.scale;
     const rs = this.runState;
 
-    SnesUI.drawWindow(this, width / 2 - 170, height / 2 - 110, 340, 220, 200);
+    GameUI.drawOverlay(this, 199, 0.55);
 
-    SnesUI.snesText(this, width / 2, height / 2 - 85, 'YOU DIED', {
-      size: '24px', color: PAL.boneEye, depth: 201,
-    }).setOrigin(0.5);
+    const panelW = 380;
+    const panelH = 280;
+    const px = (width - panelW) / 2;
+    const py = (height - panelH) / 2;
 
-    SnesUI.snesText(this, width / 2, height / 2 - 52, `TIME  ${rs.getFormattedTime()}`, {
-      size: '14px', color: PAL.uiGold, depth: 201,
-    }).setOrigin(0.5);
+    GameUI.drawPanel(this, px, py, panelW, panelH, 200);
 
-    SnesUI.snesText(this, width / 2, height / 2 - 28, `LEVEL ${rs.level}`, {
-      size: '14px', depth: 201,
-    }).setOrigin(0.5);
+    GameUI.titleText(this, width / 2, py + 24, 'You Died', {
+      size: '34px', color: '#f05068', depth: 201, origin: 0.5,
+    });
 
-    SnesUI.snesText(this, width / 2, height / 2 - 4, `SCORE ${String(rs.score).padStart(4, '0')}`, {
-      size: '14px', depth: 201,
-    }).setOrigin(0.5);
+    const rows = [
+      { label: 'Time', value: rs.getFormattedTime() },
+      { label: 'Level', value: String(rs.level) },
+      { label: 'Score', value: String(rs.score).padStart(4, '0') },
+      { label: 'Kills', value: String(rs.kills) },
+    ];
 
-    SnesUI.snesText(this, width / 2, height / 2 + 20, `KILLS ${rs.kills}`, {
-      size: '14px', depth: 201,
-    }).setOrigin(0.5);
+    rows.forEach((row, i) => {
+      const y = py + 88 + i * 32;
+      GameUI.labelText(this, px + 40, y, row.label, {
+        size: '14px', depth: 201,
+      });
+      GameUI.bodyText(this, px + panelW - 40, y, row.value, {
+        size: '16px', color: UI.textGold, depth: 201, origin: [1, 0],
+      });
+    });
 
-    const retry = SnesUI.snesText(this, width / 2, height / 2 + 55, '▶ Press R to Retry', {
-      size: '14px', color: PAL.uiGold, depth: 201,
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    const retry = GameUI.bodyText(this, width / 2, py + panelH - 52, '▶  Press R to Retry', {
+      size: '16px', color: UI.textGold, depth: 201, origin: 0.5,
+    }).setInteractive({ useHandCursor: true });
 
     retry.on('pointerdown', () => this.scene.restart());
     this.input.keyboard.once('keydown-R', () => this.scene.restart());
 
-    SnesUI.snesText(this, width / 2, height / 2 + 80, 'ESC — Main Menu', {
-      size: '12px', color: PAL.uiTextDim, depth: 201,
-    }).setOrigin(0.5);
+    GameUI.labelText(this, width / 2, py + panelH - 24, 'ESC — Main Menu', {
+      size: '14px', depth: 201, origin: 0.5,
+    });
   }
 
   update(time, delta) {

@@ -128,17 +128,31 @@ Fix unreliable projectile hits and tune world collision so blockers read clearly
 
 ---
 
-## Phase 5b — Pause Menu
+## Phase 5b — UI Polish (Legibility & Modern Fantasy)
 
 | ID | Task | Priority | Deps | Acceptance criteria |
 |----|------|----------|------|---------------------|
-| PAU-01 | `PauseMenu` overlay component (SNES window) | P0 | — | Resume + Exit to Main Menu buttons |
+| UI-01 | Load legible web fonts (Cinzel + Nunito Sans) | P0 | P-07 | [x] |
+| UI-02 | `GameUI` kit — stroked text, rounded panels, cards | P0 | UI-01 | [x] |
+| UI-03 | Redesign level-up picker — larger cards, icons, readable copy | P0 | UI-02, P-07 | [x] |
+| UI-04 | Redesign in-game HUD — modern bar, clearer timer/level/score | P0 | UI-02, P-04 | [x] |
+| UI-05 | Update main menu + boot + game over screens | P1 | UI-02 | [x] |
+
+**Phase 5b gate:** All UI text readable at a glance; fantasy tone preserved.
+
+---
+
+## Phase 5c — Pause Menu
+
+| ID | Task | Priority | Deps | Acceptance criteria |
+|----|------|----------|------|---------------------|
+| PAU-01 | `PauseMenu` overlay component (SNES window) | P0 | UI-02 | Resume + Exit to Main Menu buttons |
 | PAU-02 | ESC toggles pause; freezes physics, timer, spawns | P0 | T-01, PAU-01 | Game state frozen while paused |
 | PAU-03 | Resume restores gameplay exactly | P0 | PAU-02 | Timer continues from same elapsed |
 | PAU-04 | Exit to Main Menu via SceneTransition | P0 | PAU-01 | Clean return, no stuck listeners |
 | PAU-05 | Block ESC during level-up picker (or route to picker only) | P1 | P-07, PAU-02 | No accidental menu exit |
 
-**Phase 5b gate:** ESC pause/resume/exit works reliably mid-run.
+**Phase 5c gate:** ESC pause/resume/exit works reliably mid-run.
 
 ---
 
@@ -234,14 +248,19 @@ Phase 0 (docs) ──► Phase 1 (world) ──► Phase 3 (timer)
                                   ▼
                             Phase 5 (XP/levels/vacuum)
                                   │
-                    ┌─────────────┼─────────────┐
-                    ▼             ▼             ▼
-              Phase 5b (pause)  Phase 6     Phase 8 (audio)
-              (pause menu)   (spawn dir)   (can parallel)
-                    │             │
-                    └──────┬──────┘
-                           ▼
-                    Phase 6b (bosses/victory)
+                                  ▼
+                         Phase 5b (UI polish)
+                                  │
+                                  ▼
+                         Phase 5c (pause menu)
+                                  │
+                    ┌─────────────┴─────────────┐
+                    ▼                           ▼
+              Phase 6 (spawn dir)         Phase 8 (audio)
+                    │                           │
+                    └─────────────┬─────────────┘
+                                  ▼
+                         Phase 6b (bosses/victory)
                            │
                            ▼
                     Phase 7 (upgrade content)
@@ -256,7 +275,7 @@ Phase 0 (docs) ──► Phase 1 (world) ──► Phase 3 (timer)
 3. C-01 → C-04 (enemy hit reactions)
 4. A-01 → A-03 (LTTP art pass in parallel)
 
-**Second sprint:** Phase 5 + Phase 5b (XP loop + pause menu)
+**Second sprint:** Phase 5 + Phase 5b + Phase 5c (XP loop + UI + pause)
 
 **Third sprint:** Phase 6 + Phase 6b (spawn curve + bosses + victory)
 
@@ -275,7 +294,8 @@ Phase 0 (docs) ──► Phase 1 (world) ──► Phase 3 (timer)
 | 4 Combat feel | 7 | 4 |
 | 4b Collision | 5 | 4 |
 | 5 VS progression | 12 | 9 |
-| 5b Pause menu | 5 | 4 |
+| 5b UI polish | 5 | 4 |
+| 5c Pause menu | 5 | 4 |
 | 6 Spawn director | 5 | 1 |
 | 6b Bosses & victory | 9 | 6 |
 | 7 Upgrade content | 5 | 0 |
