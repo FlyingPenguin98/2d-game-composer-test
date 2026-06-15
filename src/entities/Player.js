@@ -1,24 +1,47 @@
+import { PAL, SPRITE_SCALE } from '../utils/SnesPalettes.js';
+
 export class Player {
   constructor(scene, x, y) {
     this.scene = scene;
-    this.sprite = scene.physics.add.sprite(x, y, 'player');
-    this.sprite.setPipeline('Light2D');
+    this.sprite = scene.physics.add.sprite(x, y, 'player', 0);
+    this.sprite.setScale(SPRITE_SCALE);
     this.sprite.setDepth(10);
-    this.sprite.body.setSize(40, 30);
-    this.sprite.body.setOffset(12, 40);
+    this.sprite.body.setSize(12, 8);
+    this.sprite.body.setOffset(10, 20);
     this.sprite.setCollideWorldBounds(true);
 
-    this.speed = 200;
+    this.speed = 130;
     this.maxHealth = 100;
     this.health = 100;
-    this.attackCooldown = 400;
+    this.attackCooldown = 450;
     this.lastAttack = 0;
-    this.facing = { x: 0, y: 1 };
+    this.facing = 'down';
+    this.walkFrame = 0;
+    this.walkTimer = 0;
 
-    this.shadow = scene.add.ellipse(x, y + 28, 50, 16, 0x000000, 0.35);
-    this.shadow.setDepth(5);
+    this.shadow = scene.add.image(x, y + 14, 'shadow').setDepth(5).setScale(SPRITE_SCALE);
+    this.shadow.setAlpha(0.7);
 
-    this.light = scene.lights.addLight(x, y, 120, 0x6090ff, 0.6);
+    this.registerAnims(scene);
+  }
+
+  static registerAnims(scene) {
+    const anims = [
+      { key: 'hero_down', start: 0, end: 1 },
+      { key: 'hero_up', start: 2, end: 3 },
+      { key: 'hero_left', start: 4, end: 5 },
+      { key: 'hero_right', start: 6, end: 7 },
+    ];
+    for (const { key, start, end } of anims) {
+      if (!scene.anims.exists(key)) {
+        scene.anims.create({
+          key,
+          frames: scene.anims.generateFrameNumbers('player', { start, end }),
+          frameRate: 6,
+          repeat: -1,
+        });
+      }
+    }
   }
 
   update(time, cursors, wasd) {
@@ -37,38 +60,37 @@ export class Player {
 
     this.sprite.setVelocity(vx * this.speed, vy * this.speed);
 
-    if (vx !== 0 || vy !== 0) {
-      this.facing = { x: vx, y: vy };
+    const moving = vx !== 0 || vy !== 0;
+    if (moving) {
+      if (Math.abs(vy) >= Math.abs(vx)) {
+        this.facing = vy < 0 ? 'up' : 'down';
+      } else {
+        this.facing = vx < 0 ? 'left' : 'right';
+      }
+      this.sprite.anims.play(`hero_${this.facing}`, true);
+    } else {
+      this.sprite.anims.stop();
+      const idleFrame = { down: 0, up: 2, left: 4, right: 6 }[this.facing];
+      this.sprite.setFrame(idleFrame);
     }
 
-    // Subtle bob animation while moving
-    const moving = vx !== 0 || vy !== 0;
-    this.sprite.setScale(1, moving ? 1 + Math.sin(time / 100) * 0.03 : 1);
+    this.shadow.setPosition(this.sprite.x, this.sprite.y + 14);
 
-    this.shadow.setPosition(this.sprite.x, this.sprite.y + 28);
-    this.light.setPosition(this.sprite.x, this.sprite.y - 10);
-
-    // Auto-attack nearest enemy
     if (time - this.lastAttack >= this.attackCooldown) {
       const target = this.findNearestEnemy();
-      if (target) {
-        this.attack(target, time);
-      }
+      if (target) this.attack(target, time);
     }
   }
 
   findNearestEnemy() {
     const enemies = this.scene.enemies.getChildren();
     let nearest = null;
-    let minDist = 350;
+    let minDist = 280;
 
     for (const enemy of enemies) {
       if (!enemy.active) continue;
       const dist = Phaser.Math.Distance.Between(
-        this.sprite.x,
-        this.sprite.y,
-        enemy.x,
-        enemy.y
+        this.sprite.x, this.sprite.y, enemy.x, enemy.y
       );
       if (dist < minDist) {
         minDist = dist;
@@ -82,42 +104,30 @@ export class Player {
     this.lastAttack = time;
 
     const angle = Phaser.Math.Angle.Between(
+      this.sprite.x, this.sprite.y, target.x, target.y
+    );
+    this.scene.fireProjectile(
       this.sprite.x,
-      this.sprite.y,
-      target.x,
-      target.y
+      this.sprite.y - 4,
+      Math.cos(angle),
+      Math.sin(angle)
     );
 
-    const fx = Math.cos(angle);
-    const fy = Math.sin(angle);
-    this.facing = { x: fx, y: fy };
-
-    this.scene.fireProjectile(this.sprite.x, this.sprite.y - 10, fx, fy);
-
-    // Attack flash on staff
-    this.scene.tweens.add({
-      targets: this.sprite,
-      alpha: { from: 1, to: 0.7 },
-      duration: 80,
-      yoyo: true,
-    });
+    // SNES-style flash: brief white tint
+    this.sprite.setTint(0xffffff);
+    this.scene.time.delayedCall(60, () => this.sprite.clearTint());
   }
 
   takeDamage(amount) {
     this.health -= amount;
-    this.scene.cameras.main.flash(100, 80, 20, 20);
 
-    this.scene.tweens.add({
-      targets: this.sprite,
-      tint: 0xff4040,
-      duration: 100,
-      yoyo: true,
-      onComplete: () => this.sprite.clearTint(),
+    // SNES damage flash — palette swap via tint
+    this.sprite.setTint(0xff8080);
+    this.scene.time.delayedCall(120, () => {
+      if (this.sprite.active) this.sprite.clearTint();
     });
 
-    if (this.health <= 0) {
-      this.die();
-    }
+    if (this.health <= 0) this.die();
   }
 
   die() {
@@ -127,6 +137,5 @@ export class Player {
   destroy() {
     this.shadow.destroy();
     this.sprite.destroy();
-    this.scene.lights.removeLight(this.light);
   }
 }

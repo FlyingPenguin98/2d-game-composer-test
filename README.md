@@ -1,13 +1,13 @@
 # Eldergrove — Fantasy HD-2D Top-Down Game
 
-A top-down fantasy action game with an HD-2D inspired art style — pixel art sprites with dynamic lighting, shadows, and particle effects.
+A top-down fantasy action game with **SNES / 16-bit pixel art** — limited palettes, 16×16 tiles, dithered shading, and classic JRPG UI.
 
 ## Features
 
 - **Main Menu** — Start a new game from a fantasy-themed title screen
 - **Player Character** — A mage who walks with WASD/arrow keys and auto-fires arcane bolts at nearby enemies
-- **Three Enemy Types** — Slimes, skeletons, and wisps that chase the player
-- **HD-2D Visuals** — Dynamic lighting, shadows, glow effects, and ambient particles
+- **Three Enemy Types** — Slimes, skeletons, and bats that chase the player
+- **HD-2D Visuals** — 16-bit SNES-style pixel art with dithered tiles, outlined sprites, and FF6-style menu windows
 
 ## Getting Started
 

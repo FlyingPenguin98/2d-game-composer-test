@@ -1,325 +1,541 @@
+import { PAL, PixelCanvas, TILE } from './SnesPalettes.js';
+
 /**
- * Procedural pixel-art texture generator for HD-2D style sprites and tiles.
+ * Procedural SNES-style 16×16 tile and sprite generator.
+ * Limited palettes, 1px outlines, dithered shading — no HD lighting.
  */
 export class TextureGenerator {
   static generateAll(scene) {
-    this.generateTiles(scene);
-    this.generatePlayer(scene);
+    this.generateTileset(scene);
+    this.generatePlayerSheet(scene);
     this.generateEnemies(scene);
     this.generateProjectiles(scene);
-    this.generateParticles(scene);
+    this.generateFX(scene);
     this.generateUI(scene);
   }
 
-  static drawPixel(ctx, x, y, size, color) {
-    ctx.fillStyle = color;
-    ctx.fillRect(x * size, y * size, size, size);
+  static addCanvas(scene, key, canvas) {
+    if (scene.textures.exists(key)) scene.textures.remove(key);
+    scene.textures.addCanvas(key, canvas);
   }
 
-  static generateTiles(scene) {
-    const size = 32;
-    const canvas = document.createElement('canvas');
-    canvas.width = size * 4;
-    canvas.height = size * 2;
-    const ctx = canvas.getContext('2d');
-
-    // Grass tile
-    for (let y = 0; y < 2; y++) {
-      for (let x = 0; x < 4; x++) {
-        const base = (x + y) % 2 === 0 ? '#2d5a27' : '#347030';
-        ctx.fillStyle = base;
-        ctx.fillRect(x * size, y * size, size, size);
-        // Grass blades
-        for (let i = 0; i < 8; i++) {
-          const gx = x * size + Math.random() * size;
-          const gy = y * size + Math.random() * size;
-          ctx.fillStyle = Math.random() > 0.5 ? '#4a9a3a' : '#3d7a32';
-          ctx.fillRect(gx, gy, 2, 4);
-        }
-        // Flowers
-        if (Math.random() > 0.85) {
-          ctx.fillStyle = ['#e8a0bf', '#f0d060', '#a080e0'][Math.floor(Math.random() * 3)];
-          ctx.fillRect(x * size + 10, y * size + 12, 4, 4);
+  /** Split canvas textures into proper 16×16 animation frames. */
+  static registerFrames(scene) {
+    const sheets = [
+      { key: 'player', fw: 16, fh: 16, count: 8 },
+      { key: 'enemy_slime', fw: 16, fh: 16, count: 2 },
+      { key: 'enemy_bat', fw: 16, fh: 16, count: 2 },
+    ];
+    for (const { key, fw, fh, count } of sheets) {
+      const tex = scene.textures.get(key);
+      for (let i = 0; i < count; i++) {
+        if (!tex.has(i)) {
+          tex.add(i, 0, i * fw, 0, fw, fh);
         }
       }
     }
-
-    // Dark grass / path
-    for (let y = 0; y < 2; y++) {
-      for (let x = 0; x < 2; x++) {
-        ctx.fillStyle = (x + y) % 2 === 0 ? '#1a3018' : '#223820';
-        ctx.fillRect((x + 2) * size, y * size, size, size);
-      }
-    }
-
-    // Stone path tile
-    for (let y = 0; y < 2; y++) {
-      for (let x = 0; x < 2; x++) {
-        ctx.fillStyle = '#4a4a55';
-        ctx.fillRect(x * size, (y + 2) * size, size, size);
-        ctx.fillStyle = '#5a5a68';
-        ctx.fillRect(x * size + 4, (y + 2) * size + 4, size - 8, size - 8);
-        ctx.fillStyle = '#3a3a45';
-        ctx.fillRect(x * size + 8, (y + 2) * size + 8, 6, 6);
-      }
-    }
-
-    scene.textures.addCanvas('tiles', canvas);
   }
 
-  static generatePlayer(scene) {
-    const p = 4;
-    const w = 16;
-    const h = 20;
+  // ── Tileset (16×16 tiles in a sheet) ──────────────────────────────
+
+  static generateTileset(scene) {
+    const cols = 8;
+    const rows = 4;
     const canvas = document.createElement('canvas');
-    canvas.width = w * p;
-    canvas.height = h * p;
+    canvas.width = cols * TILE;
+    canvas.height = rows * TILE;
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
 
-    const palette = {
-      skin: '#f0c8a0',
-      hair: '#3a2010',
-      robe: '#2a4080',
-      robeLight: '#4a68b0',
-      robeDark: '#1a2860',
-      gold: '#d4a830',
-      staff: '#6a4030',
-      staffGlow: '#80c0ff',
-    };
+    const tiles = [
+      () => this.tileGrass(PAL.grass1, PAL.grass2),
+      () => this.tileGrass(PAL.grass2, PAL.grass3),
+      () => this.tileGrassFlowers(),
+      () => this.tileGrassDark(),
+      () => this.tileDirt(),
+      () => this.tileStone(),
+      () => this.tileTrunk(),
+      () => this.tileBush(),
+      () => this.tileCanopyNW(),
+      () => this.tileCanopyNE(),
+      () => this.tileCanopySW(),
+      () => this.tileCanopySE(),
+      () => this.tileCanopyFull(),
+      () => this.tileWater(0),
+      () => this.tileWater(1),
+      () => this.tilePath(),
+    ];
 
-    // Shadow blob
-    for (let x = 4; x < 12; x++) {
-      this.drawPixel(ctx, x, 18, p, 'rgba(0,0,0,0.3)');
-    }
+    tiles.forEach((fn, i) => {
+      const tx = (i % cols) * TILE;
+      const ty = Math.floor(i / cols) * TILE;
+      const tileCanvas = fn();
+      ctx.drawImage(tileCanvas, tx, ty);
+    });
 
-    // Robe body
-    for (let y = 10; y < 17; y++) {
-      for (let x = 5; x < 11; x++) {
-        const c = y < 13 ? palette.robeLight : palette.robe;
-        this.drawPixel(ctx, x, y, p, c);
+    this.addCanvas(scene, 'tileset', canvas);
+  }
+
+  static tileGrass(c1, c2) {
+    const pc = new PixelCanvas(TILE, TILE, 1);
+    pc.ditherRect(0, 0, TILE, TILE, c1, c2);
+    // Tiny grass tufts
+    pc.set(3, 5, PAL.grass3);
+    pc.set(4, 4, PAL.grass1);
+    pc.set(10, 8, PAL.grass3);
+    pc.set(11, 7, PAL.grass1);
+    pc.set(7, 12, PAL.grass3);
+    return pc.flush();
+  }
+
+  static tileGrassFlowers() {
+    const pc = new PixelCanvas(TILE, TILE, 1);
+    pc.ditherRect(0, 0, TILE, TILE, PAL.grass1, PAL.grass2);
+    pc.set(4, 6, PAL.flower1);
+    pc.set(4, 5, PAL.flower2);
+    pc.set(11, 10, PAL.flower2);
+    pc.set(11, 9, PAL.flower1);
+    return pc.flush();
+  }
+
+  static tileGrassDark() {
+    const pc = new PixelCanvas(TILE, TILE, 1);
+    pc.ditherRect(0, 0, TILE, TILE, PAL.grass2, PAL.grassDark);
+    return pc.flush();
+  }
+
+  static tileDirt() {
+    const pc = new PixelCanvas(TILE, TILE, 1);
+    pc.ditherRect(0, 0, TILE, TILE, PAL.dirt1, PAL.dirt2);
+    pc.set(2, 3, PAL.dirt3);
+    pc.set(9, 7, PAL.dirt3);
+    pc.set(13, 12, PAL.dirt3);
+    pc.set(6, 14, PAL.dirt3);
+    return pc.flush();
+  }
+
+  static tileStone() {
+    const pc = new PixelCanvas(TILE, TILE, 1);
+    pc.rect(0, 0, TILE, TILE, PAL.stone2);
+    // Cobble pattern
+    for (let y = 0; y < TILE; y += 4) {
+      for (let x = (y / 4) % 2 === 0 ? 0 : 4; x < TILE; x += 8) {
+        pc.rect(x, y, 7, 3, PAL.stone1);
+        pc.set(x, y, PAL.stone3);
+        pc.set(x + 6, y + 2, PAL.stone3);
       }
     }
-    // Robe dark edges
-    for (let y = 10; y < 17; y++) {
-      this.drawPixel(ctx, 5, y, p, palette.robeDark);
-      this.drawPixel(ctx, 10, y, p, palette.robeDark);
+    return pc.flush();
+  }
+
+  static tilePath() {
+    const pc = new PixelCanvas(TILE, TILE, 1);
+    pc.ditherRect(0, 0, TILE, TILE, PAL.dirt1, PAL.dirt2);
+    pc.rect(0, 0, TILE, 1, PAL.grass2);
+    pc.rect(0, TILE - 1, TILE, 1, PAL.grass2);
+    return pc.flush();
+  }
+
+  static tileTrunk() {
+    const pc = new PixelCanvas(TILE, TILE, 1);
+    pc.ditherRect(0, 0, TILE, TILE, PAL.grass1, PAL.grass2);
+    pc.rect(6, 4, 4, 12, PAL.trunk2);
+    pc.rect(7, 4, 2, 12, PAL.trunk1);
+    pc.set(6, 4, PAL.trunk3);
+    pc.set(9, 4, PAL.trunk3);
+    return pc.flush();
+  }
+
+  static tileBush() {
+    const pc = new PixelCanvas(TILE, TILE, 1);
+    pc.ditherRect(0, 0, TILE, TILE, PAL.grass1, PAL.grass2);
+    pc.rect(4, 8, 8, 6, PAL.leaf2);
+    pc.rect(3, 6, 10, 4, PAL.leaf1);
+    pc.rect(5, 5, 6, 2, PAL.leaf1);
+    pc.set(4, 8, PAL.leaf3);
+    pc.set(11, 9, PAL.leaf3);
+    pc.set(7, 5, PAL.leaf4);
+    return pc.flush();
+  }
+
+  static tileCanopyFull() {
+    const pc = new PixelCanvas(TILE, TILE, 1);
+    pc.rect(0, 0, TILE, TILE, PAL.leaf2);
+    pc.rect(1, 1, TILE - 2, TILE - 2, PAL.leaf1);
+    pc.rect(3, 3, TILE - 6, TILE - 6, PAL.leaf3);
+    pc.set(5, 5, PAL.leaf4);
+    pc.set(10, 7, PAL.leaf4);
+    pc.set(7, 10, PAL.leaf4);
+    // Highlight dots
+    pc.set(4, 4, PAL.leaf1);
+    pc.set(11, 5, PAL.leaf1);
+    return pc.flush();
+  }
+
+  static tileCanopyNW() {
+    const pc = new PixelCanvas(TILE, TILE, 1);
+    pc.ditherRect(0, 0, TILE, TILE, PAL.grass1, PAL.grass2);
+    pc.rect(0, 0, TILE, 10, PAL.leaf2);
+    pc.rect(0, 0, TILE, 8, PAL.leaf1);
+    pc.rect(0, 0, 10, 6, PAL.leaf3);
+    pc.set(2, 3, PAL.leaf4);
+    return pc.flush();
+  }
+
+  static tileCanopyNE() {
+    const pc = new PixelCanvas(TILE, TILE, 1);
+    pc.ditherRect(0, 0, TILE, TILE, PAL.grass1, PAL.grass2);
+    pc.rect(0, 0, TILE, 10, PAL.leaf2);
+    pc.rect(0, 0, TILE, 8, PAL.leaf1);
+    pc.rect(6, 0, 10, 6, PAL.leaf3);
+    pc.set(12, 3, PAL.leaf4);
+    return pc.flush();
+  }
+
+  static tileCanopySW() {
+    const pc = new PixelCanvas(TILE, TILE, 1);
+    pc.ditherRect(0, 0, TILE, TILE, PAL.grass1, PAL.grass2);
+    pc.rect(0, 6, TILE, 10, PAL.leaf2);
+    pc.rect(0, 8, TILE, 8, PAL.leaf1);
+    pc.rect(0, 10, 10, 6, PAL.leaf3);
+    return pc.flush();
+  }
+
+  static tileCanopySE() {
+    const pc = new PixelCanvas(TILE, TILE, 1);
+    pc.ditherRect(0, 0, TILE, TILE, PAL.grass1, PAL.grass2);
+    pc.rect(0, 6, TILE, 10, PAL.leaf2);
+    pc.rect(0, 8, TILE, 8, PAL.leaf1);
+    pc.rect(6, 10, 10, 6, PAL.leaf3);
+    return pc.flush();
+  }
+
+  static tileWater(frame) {
+    const pc = new PixelCanvas(TILE, TILE, 1);
+    const light = frame === 0 ? PAL.water1 : PAL.water2;
+    const dark = frame === 0 ? PAL.water2 : PAL.water3;
+    pc.ditherRect(0, 0, TILE, TILE, light, dark);
+    // Wave lines
+    for (let x = 0; x < TILE; x++) {
+      pc.set(x, 4 + (frame ? 1 : 0), PAL.water1);
+      pc.set(x, 11 + (frame ? 0 : 1), PAL.water3);
     }
+    return pc.flush();
+  }
+
+  // ── Player sprite sheet (16×16, 4 dirs × 2 walk frames) ───────────
+
+  static generatePlayerSheet(scene) {
+    const fw = 16;
+    const fh = 16;
+    const frames = 8; // down0, down1, up0, up1, left0, left1, right0, right1
+    const canvas = document.createElement('canvas');
+    canvas.width = fw * frames;
+    canvas.height = fh;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+
+    const dirs = ['down', 'up', 'left', 'right'];
+    dirs.forEach((dir, di) => {
+      for (let step = 0; step < 2; step++) {
+        const pc = this.drawHero(dir, step);
+        ctx.drawImage(pc.flush(), (di * 2 + step) * fw, 0);
+      }
+    });
+
+    this.addCanvas(scene, 'player', canvas);
+  }
+
+  static drawHero(dir, step) {
+    const pc = new PixelCanvas(16, 16, 1);
+
+    // Legs (animate on step)
+    const legOff = step === 1 ? 1 : 0;
+    pc.set(6 - legOff, 13, PAL.boot2);
+    pc.set(7 - legOff, 13, PAL.boot1);
+    pc.set(8 + legOff, 13, PAL.boot1);
+    pc.set(9 + legOff, 13, PAL.boot2);
+    pc.set(6, 12, PAL.boot2);
+    pc.set(7, 12, PAL.boot1);
+    pc.set(8, 12, PAL.boot1);
+    pc.set(9, 12, PAL.boot2);
+
+    // Tunic body
+    pc.rect(5, 8, 6, 5, PAL.tunic2);
+    pc.rect(6, 8, 4, 5, PAL.tunic1);
+    pc.set(5, 8, PAL.tunic3);
+    pc.set(10, 8, PAL.tunic3);
+    pc.set(7, 8, PAL.tunic1);
+    pc.set(8, 8, PAL.tunic1);
+
+    // Belt
+    pc.rect(5, 11, 6, 1, PAL.boot1);
 
     // Head
-    for (let y = 4; y < 10; y++) {
-      for (let x = 6; x < 10; x++) {
-        this.drawPixel(ctx, x, y, p, palette.skin);
-      }
-    }
-
+    pc.rect(6, 4, 4, 4, PAL.skin2);
+    pc.rect(7, 4, 2, 4, PAL.skin1);
     // Hair
-    for (let x = 5; x < 11; x++) this.drawPixel(ctx, x, 3, p, palette.hair);
-    for (let x = 5; x < 11; x++) this.drawPixel(ctx, x, 4, p, palette.hair);
-    this.drawPixel(ctx, 5, 5, p, palette.hair);
-    this.drawPixel(ctx, 10, 5, p, palette.hair);
+    pc.rect(6, 3, 4, 2, PAL.hair1);
+    pc.set(5, 4, PAL.hair2);
+    pc.set(10, 4, PAL.hair2);
+    pc.set(7, 3, PAL.hair2);
 
-    // Eyes
-    this.drawPixel(ctx, 7, 6, p, '#201010');
-    this.drawPixel(ctx, 9, 6, p, '#201010');
-
-    // Staff
-    for (let y = 2; y < 16; y++) this.drawPixel(ctx, 12, y, p, palette.staff);
-    // Staff orb
-    for (let y = 0; y < 3; y++) {
-      for (let x = 11; x < 14; x++) {
-        this.drawPixel(ctx, x, y, p, palette.staffGlow);
-      }
+    // Face direction
+    if (dir === 'down') {
+      pc.set(7, 6, PAL.black);
+      pc.set(8, 6, PAL.black);
+      pc.set(7, 7, PAL.skin3);
+    } else if (dir === 'up') {
+      pc.rect(6, 4, 4, 3, PAL.hair1);
+      pc.set(7, 3, PAL.hair2);
+    } else if (dir === 'left') {
+      pc.set(6, 6, PAL.black);
+      pc.set(7, 7, PAL.skin3);
+    } else {
+      pc.set(9, 6, PAL.black);
+      pc.set(8, 7, PAL.skin3);
     }
-    this.drawPixel(ctx, 12, 1, p, '#ffffff');
 
-    // Gold trim
-    for (let x = 5; x < 11; x++) this.drawPixel(ctx, x, 10, p, palette.gold);
+    // Sword on side
+    if (dir === 'left' || dir === 'up') {
+      pc.set(4, 7, PAL.sword1);
+      pc.set(4, 6, PAL.sword2);
+      pc.set(4, 5, PAL.sword3);
+      pc.set(4, 4, PAL.sword1);
+    } else {
+      pc.set(11, 7, PAL.sword1);
+      pc.set(11, 6, PAL.sword2);
+      pc.set(11, 5, PAL.sword3);
+      pc.set(11, 4, PAL.sword1);
+    }
 
-    scene.textures.addCanvas('player', canvas);
+    pc.outline();
+    return pc;
   }
+
+  // ── Enemies ───────────────────────────────────────────────────────
 
   static generateEnemies(scene) {
     this.generateSlime(scene);
     this.generateSkeleton(scene);
-    this.generateWisp(scene);
+    this.generateBat(scene);
   }
 
   static generateSlime(scene) {
-    const p = 4;
-    const w = 14;
-    const h = 12;
+    const fw = 16;
+    const frames = 2;
     const canvas = document.createElement('canvas');
-    canvas.width = w * p;
-    canvas.height = h * p;
+    canvas.width = fw * frames;
+    canvas.height = 16;
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
 
-    const colors = ['#40c060', '#30a050', '#208040'];
+    for (let f = 0; f < frames; f++) {
+      const pc = new PixelCanvas(16, 16, 1);
+      const squash = f === 1 ? 1 : 0;
+      const yOff = squash ? 1 : 0;
 
-    // Body blob
-    for (let y = 4; y < 10; y++) {
-      const width = y < 6 ? 6 : y < 8 ? 8 : 10;
-      const startX = 7 - Math.floor(width / 2);
-      for (let x = startX; x < startX + width; x++) {
-        const c = colors[(x + y) % 3];
-        this.drawPixel(ctx, x, y, p, c);
+      // DQ-style slime dome
+      for (let y = 6 + yOff; y < 14; y++) {
+        const prog = (y - 6) / 8;
+        const halfW = Math.floor(2 + prog * 5);
+        for (let x = 8 - halfW; x <= 8 + halfW; x++) {
+          const c = y < 9 ? PAL.slime1 : y < 12 ? PAL.slime2 : PAL.slime3;
+          pc.set(x, y, c);
+        }
       }
-    }
-    // Highlight
-    this.drawPixel(ctx, 5, 5, p, '#80ffa0');
-    this.drawPixel(ctx, 6, 4, p, '#80ffa0');
-    // Eyes
-    this.drawPixel(ctx, 5, 6, p, '#101010');
-    this.drawPixel(ctx, 8, 6, p, '#101010');
-    this.drawPixel(ctx, 5, 7, p, '#ffffff');
-    this.drawPixel(ctx, 8, 7, p, '#ffffff');
+      // Highlight
+      pc.set(6, 8 + yOff, PAL.slimeHi);
+      pc.set(7, 7 + yOff, PAL.slimeHi);
+      // Eyes
+      pc.set(6, 10 + yOff, PAL.black);
+      pc.set(9, 10 + yOff, PAL.black);
+      pc.set(6, 11 + yOff, PAL.white);
+      pc.set(9, 11 + yOff, PAL.white);
 
-    scene.textures.addCanvas('enemy_slime', canvas);
+      pc.outline();
+      ctx.drawImage(pc.flush(), f * fw, 0);
+    }
+
+    this.addCanvas(scene, 'enemy_slime', canvas);
   }
 
   static generateSkeleton(scene) {
-    const p = 4;
-    const w = 14;
-    const h = 18;
-    const canvas = document.createElement('canvas');
-    canvas.width = w * p;
-    canvas.height = h * p;
-    const ctx = canvas.getContext('2d');
-    ctx.imageSmoothingEnabled = false;
-
-    const bone = '#d8d0c0';
-    const boneDark = '#a09888';
-    const glow = '#8040c0';
+    const pc = new PixelCanvas(16, 16, 1);
 
     // Skull
-    for (let y = 2; y < 7; y++) {
-      for (let x = 5; x < 10; x++) {
-        this.drawPixel(ctx, x, y, p, bone);
-      }
-    }
-    // Eye sockets
-    this.drawPixel(ctx, 6, 4, p, '#101010');
-    this.drawPixel(ctx, 8, 4, p, '#101010');
-    this.drawPixel(ctx, 6, 4, p, glow);
-    this.drawPixel(ctx, 8, 4, p, glow);
-    // Ribs
-    for (let y = 7; y < 13; y++) {
-      this.drawPixel(ctx, 7, y, p, bone);
-      if (y % 2 === 0) {
-        this.drawPixel(ctx, 5, y, p, bone);
-        this.drawPixel(ctx, 9, y, p, bone);
-      }
-    }
-    // Arms
-    for (let x = 3; x < 6; x++) this.drawPixel(ctx, x, 8, p, bone);
-    for (let x = 9; x < 12; x++) this.drawPixel(ctx, x, 8, p, bone);
-    // Legs
-    this.drawPixel(ctx, 6, 13, p, boneDark);
-    this.drawPixel(ctx, 8, 13, p, boneDark);
-    this.drawPixel(ctx, 6, 14, p, bone);
-    this.drawPixel(ctx, 8, 14, p, bone);
+    pc.rect(5, 2, 6, 5, PAL.bone1);
+    pc.rect(6, 3, 4, 3, PAL.bone2);
+    pc.set(6, 4, PAL.boneEye);
+    pc.set(9, 4, PAL.boneEye);
+    pc.set(7, 6, PAL.bone3);
+    pc.set(8, 6, PAL.bone3);
+    // Jaw
+    pc.set(6, 7, PAL.bone2);
+    pc.set(9, 7, PAL.bone2);
 
-    scene.textures.addCanvas('enemy_skeleton', canvas);
+    // Spine & ribs
+    pc.rect(7, 7, 2, 6, PAL.bone2);
+    for (let y = 8; y < 12; y += 2) {
+      pc.set(5, y, PAL.bone1);
+      pc.set(10, y, PAL.bone1);
+    }
+
+    // Arms
+    pc.set(4, 9, PAL.bone2);
+    pc.set(3, 9, PAL.bone1);
+    pc.set(11, 9, PAL.bone2);
+    pc.set(12, 9, PAL.bone1);
+
+    // Legs
+    pc.set(6, 13, PAL.bone2);
+    pc.set(7, 14, PAL.bone1);
+    pc.set(8, 14, PAL.bone1);
+    pc.set(9, 13, PAL.bone2);
+
+    pc.outline();
+    this.addCanvas(scene, 'enemy_skeleton', pc.flush());
   }
 
-  static generateWisp(scene) {
-    const p = 4;
-    const w = 12;
-    const h = 14;
+  static generateBat(scene) {
+    const fw = 16;
+    const frames = 2;
     const canvas = document.createElement('canvas');
-    canvas.width = w * p;
-    canvas.height = h * p;
+    canvas.width = fw * frames;
+    canvas.height = 16;
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
 
-    const colors = ['#ff6040', '#ff8040', '#ffa060', '#ffc080'];
+    for (let f = 0; f < frames; f++) {
+      const pc = new PixelCanvas(16, 16, 1);
+      const wingUp = f === 0;
 
-    // Ethereal body
-    for (let y = 2; y < 12; y++) {
-      const width = 4 + Math.floor(Math.sin(y * 0.8) * 2 + 2);
-      const startX = 6 - Math.floor(width / 2);
-      for (let x = startX; x < startX + width; x++) {
-        this.drawPixel(ctx, x, y, p, colors[(x + y) % 4]);
+      // Wings
+      if (wingUp) {
+        pc.set(2, 6, PAL.batWing);
+        pc.set(3, 5, PAL.bat2);
+        pc.set(4, 4, PAL.batWing);
+        pc.set(12, 6, PAL.batWing);
+        pc.set(11, 5, PAL.bat2);
+        pc.set(10, 4, PAL.batWing);
+      } else {
+        pc.set(2, 8, PAL.batWing);
+        pc.set(3, 9, PAL.bat2);
+        pc.set(4, 10, PAL.batWing);
+        pc.set(12, 8, PAL.batWing);
+        pc.set(11, 9, PAL.bat2);
+        pc.set(10, 10, PAL.batWing);
       }
-    }
-    // Core
-    for (let y = 5; y < 8; y++) {
-      for (let x = 4; x < 8; x++) {
-        this.drawPixel(ctx, x, y, p, '#ffffa0');
-      }
-    }
-    this.drawPixel(ctx, 5, 6, p, '#ffffff');
-    this.drawPixel(ctx, 6, 6, p, '#ffffff');
 
-    scene.textures.addCanvas('enemy_wisp', canvas);
+      // Body
+      pc.rect(6, 6, 4, 5, PAL.bat2);
+      pc.rect(7, 7, 2, 3, PAL.bat1);
+      // Ears
+      pc.set(6, 5, PAL.bat3);
+      pc.set(9, 5, PAL.bat3);
+      // Eyes
+      pc.set(7, 7, PAL.batEye);
+      pc.set(8, 7, PAL.batEye);
+
+      pc.outline();
+      ctx.drawImage(pc.flush(), f * fw, 0);
+    }
+
+    this.addCanvas(scene, 'enemy_bat', canvas);
   }
+
+  // ── Projectiles & FX ──────────────────────────────────────────────
 
   static generateProjectiles(scene) {
-    const p = 4;
-    const canvas = document.createElement('canvas');
-    canvas.width = 8 * p;
-    canvas.height = 8 * p;
-    const ctx = canvas.getContext('2d');
-    ctx.imageSmoothingEnabled = false;
-
-    for (let y = 1; y < 7; y++) {
-      for (let x = 1; x < 7; x++) {
-        const dist = Math.sqrt((x - 4) ** 2 + (y - 4) ** 2);
-        if (dist < 3) {
-          const c = dist < 1.5 ? '#ffffff' : dist < 2.5 ? '#80d0ff' : '#4080ff';
-          this.drawPixel(ctx, x, y, p, c);
-        }
-      }
-    }
-
-    scene.textures.addCanvas('projectile', canvas);
+    const pc = new PixelCanvas(8, 8, 1);
+    pc.set(3, 3, PAL.bolt1);
+    pc.set(4, 3, PAL.bolt1);
+    pc.set(3, 4, PAL.bolt2);
+    pc.set(4, 4, PAL.bolt2);
+    pc.set(2, 3, PAL.bolt3);
+    pc.set(5, 4, PAL.bolt3);
+    pc.set(3, 2, PAL.bolt3);
+    pc.set(4, 5, PAL.bolt3);
+    this.addCanvas(scene, 'projectile', pc.flush());
   }
 
-  static generateParticles(scene) {
-    const p = 2;
-    const canvas = document.createElement('canvas');
-    canvas.width = 4 * p;
-    canvas.height = 4 * p;
-    const ctx = canvas.getContext('2d');
-    ctx.imageSmoothingEnabled = false;
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(p, p, 2 * p, 2 * p);
-    scene.textures.addCanvas('particle', canvas);
+  static generateFX(scene) {
+    const pc = new PixelCanvas(4, 4, 1);
+    pc.rect(1, 1, 2, 2, PAL.white);
+    this.addCanvas(scene, 'particle', pc.flush());
 
-    const glowCanvas = document.createElement('canvas');
-    glowCanvas.width = 64;
-    glowCanvas.height = 64;
-    const gctx = glowCanvas.getContext('2d');
-    const grad = gctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-    grad.addColorStop(0, 'rgba(255,255,255,0.8)');
-    grad.addColorStop(0.3, 'rgba(100,180,255,0.4)');
-    grad.addColorStop(1, 'rgba(0,0,0,0)');
-    gctx.fillStyle = grad;
-    gctx.fillRect(0, 0, 64, 64);
-    scene.textures.addCanvas('glow', glowCanvas);
+    // 8×8 SNES shadow blob
+    const sh = new PixelCanvas(8, 4, 1);
+    sh.set(2, 1, '#00000055');
+    sh.set(3, 1, '#00000055');
+    sh.set(4, 1, '#00000055');
+    sh.set(5, 1, '#00000055');
+    sh.set(1, 2, '#00000044');
+    sh.set(2, 2, '#00000066');
+    sh.set(3, 2, '#00000066');
+    sh.set(4, 2, '#00000066');
+    sh.set(5, 2, '#00000066');
+    sh.set(6, 2, '#00000044');
+    // Use solid colors since canvas won't do alpha in pixel buf well
+    const sh2 = new PixelCanvas(8, 4, 1);
+    sh2.set(2, 1, '#283028');
+    sh2.set(3, 1, '#283028');
+    sh2.set(4, 1, '#283028');
+    sh2.set(5, 1, '#283028');
+    sh2.set(1, 2, '#203020');
+    sh2.set(2, 2, '#303830');
+    sh2.set(3, 2, '#303830');
+    sh2.set(4, 2, '#303830');
+    sh2.set(5, 2, '#303830');
+    sh2.set(6, 2, '#203020');
+    this.addCanvas(scene, 'shadow', sh2.flush());
+
+    // Heart icon for HUD
+    const heart = new PixelCanvas(8, 8, 1);
+    heart.set(2, 2, PAL.boneEye);
+    heart.set(5, 2, PAL.boneEye);
+    heart.set(1, 3, PAL.boneEye);
+    heart.set(2, 3, PAL.boneEye);
+    heart.set(3, 3, PAL.boneEye);
+    heart.set(4, 3, PAL.boneEye);
+    heart.set(5, 3, PAL.boneEye);
+    heart.set(6, 3, PAL.boneEye);
+    heart.set(1, 4, PAL.boneEye);
+    heart.set(6, 4, PAL.boneEye);
+    heart.set(2, 5, PAL.boneEye);
+    heart.set(5, 5, PAL.boneEye);
+    heart.set(3, 6, PAL.boneEye);
+    heart.set(4, 6, PAL.boneEye);
+    heart.set(3, 7, PAL.boneEye);
+    heart.set(4, 7, PAL.boneEye);
+    this.addCanvas(scene, 'heart', heart.flush());
+
+    // Empty heart
+    const heartEmpty = new PixelCanvas(8, 8, 1);
+    heartEmpty.set(2, 2, PAL.bone3);
+    heartEmpty.set(5, 2, PAL.bone3);
+    heartEmpty.rect(1, 3, 6, 2, PAL.bone3);
+    heartEmpty.set(1, 5, PAL.bone3);
+    heartEmpty.set(6, 5, PAL.bone3);
+    heartEmpty.set(2, 6, PAL.bone3);
+    heartEmpty.set(5, 6, PAL.bone3);
+    heartEmpty.set(3, 7, PAL.bone3);
+    heartEmpty.set(4, 7, PAL.bone3);
+    this.addCanvas(scene, 'heart_empty', heartEmpty.flush());
   }
 
   static generateUI(scene) {
-    const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 64;
-    const ctx = canvas.getContext('2d');
-
-    // Title banner background
-    const grad = ctx.createLinearGradient(0, 0, 256, 0);
-    grad.addColorStop(0, 'rgba(20,30,60,0)');
-    grad.addColorStop(0.2, 'rgba(30,50,90,0.9)');
-    grad.addColorStop(0.5, 'rgba(40,60,110,0.95)');
-    grad.addColorStop(0.8, 'rgba(30,50,90,0.9)');
-    grad.addColorStop(1, 'rgba(20,30,60,0)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 8, 256, 48);
-
-    ctx.strokeStyle = '#d4a830';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(16, 12, 224, 40);
-
-    scene.textures.addCanvas('ui_banner', canvas);
+    // 32×32 SNES window corner tile (FF6 style)
+    const pc = new PixelCanvas(32, 32, 1);
+    // Outer white border
+    pc.rect(0, 0, 32, 32, PAL.uiWhite);
+    // Dark blue body
+    pc.rect(2, 2, 28, 28, PAL.uiFill);
+    // Inner highlight/shadow bevel
+    pc.rect(2, 2, 28, 2, PAL.uiHighlight);
+    pc.rect(2, 2, 2, 28, PAL.uiHighlight);
+    pc.rect(28, 2, 2, 28, PAL.uiShadow);
+    pc.rect(2, 28, 28, 2, PAL.uiShadow);
+    this.addCanvas(scene, 'ui_window', pc.flush());
   }
 }
