@@ -5,12 +5,15 @@ import {
   getProjectileCount,
   getProjectileDamage,
   getPierceCount,
+  getPrimaryWeaponVisual,
+  WEAPON_VISUALS,
 } from '../config/UpgradeRegistry.js';
 
 export class Player {
   constructor(scene, x, y) {
     this.scene = scene;
     this.invincible = false;
+    this.primaryWeaponId = 'arcane_bolt';
 
     Player.registerAnims(scene);
 
@@ -55,11 +58,11 @@ export class Player {
   }
 
   ensureOrbitBlades(count) {
+    const visual = WEAPON_VISUALS.orbit_blade;
     while (this.orbitBlades.length < count) {
-      const blade = this.scene.add.image(0, 0, 'projectile')
-        .setScale(SPRITE_SCALE * 0.9)
-        .setDepth(11)
-        .setTint(0xa0d0ff);
+      const blade = this.scene.add.image(0, 0, visual.texture)
+        .setScale(SPRITE_SCALE * visual.scale)
+        .setDepth(11);
       this.orbitBlades.push(blade);
     }
     while (this.orbitBlades.length > count) {
@@ -71,7 +74,7 @@ export class Player {
     const count = this.orbitBlades.length;
     if (count === 0) return;
 
-    this.orbitAngle += 0.04;
+    this.orbitAngle += 0.045;
     const radius = XP.ORBIT_RADIUS;
 
     for (let i = 0; i < count; i++) {
@@ -81,6 +84,7 @@ export class Player {
         this.sprite.x + Math.cos(angle) * radius,
         this.sprite.y + Math.sin(angle) * radius
       );
+      blade.setRotation(angle + Math.PI / 2);
       blade.setDepth(8 + this.sprite.y * 0.001 + 0.5);
     }
 
@@ -157,6 +161,7 @@ export class Player {
     );
     const count = getProjectileCount(this);
     const spread = count > 1 ? 0.35 : 0;
+    const visual = getPrimaryWeaponVisual(this);
 
     for (let i = 0; i < count; i++) {
       const t = count === 1 ? 0 : (i / (count - 1) - 0.5) * spread;
@@ -169,6 +174,10 @@ export class Player {
         {
           damage: getProjectileDamage(this),
           pierce: getPierceCount(this),
+          texture: visual.texture,
+          tint: visual.tint,
+          trailColor: visual.trailColor,
+          scale: visual.scale,
         }
       );
     }

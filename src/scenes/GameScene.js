@@ -4,15 +4,19 @@ import { XpGem } from '../entities/XpGem.js';
 import { VacuumItem } from '../entities/VacuumItem.js';
 import { WorldMap } from '../world/WorldMap.js';
 import { WorldRenderer } from '../world/WorldRenderer.js';
-import { RunState, getSpawnIntervalForTime } from '../services/RunState.js';
+import { RunState } from '../services/RunState.js';
+import { SpawnDirector } from '../services/SpawnDirector.js';
 import { PAL } from '../utils/SnesPalettes.js';
 import { GameUI, UI } from '../utils/GameUI.js';
 import { SceneTransition } from '../utils/SceneTransition.js';
 import { AssetService } from '../services/AssetService.js';
 import { UpgradePicker } from '../ui/UpgradePicker.js';
+import { PauseMenu } from '../ui/PauseMenu.js';
+import { UpgradeLoadoutHud } from '../ui/UpgradeLoadoutHud.js';
 import {
   applyUpgrade,
-  pickRandomUpgrades,
+  applyStartingLoadout,
+  pickLevelUpChoices,
   getPickupRadius,
 } from '../config/UpgradeRegistry.js';
 import {
@@ -42,10 +46,12 @@ export class GameScene extends Phaser.Scene {
       const { width, height } = this.scale;
 
       this.runState = new RunState();
-      this.spawnTimer = 0;
       this.gameOver = false;
       this.levelUpActive = false;
+      this.pauseActive = false;
       this.upgradePicker = null;
+      this.pauseMenu = null;
+      this.spawnDirector = null;
 
       this.cameras.main.setBackgroundColor(PAL.grassDark);
 
@@ -55,6 +61,10 @@ export class GameScene extends Phaser.Scene {
       this.createUI(width, height);
       this.setupInput();
       this.setupCollisions();
+
+      this.spawnDirector = new SpawnDirector(this);
+      applyStartingLoadout(this.player, this.runState);
+      this.loadoutHud = new UpgradeLoadoutHud(this);
 
       this.events.on('playerDied', this.handleGameOver, this);
       SceneTransition.onEnter(this, 300);
@@ -70,6 +80,8 @@ export class GameScene extends Phaser.Scene {
       this.input.keyboard.off('keydown-ESC', this.escHandler);
     }
     this.upgradePicker?.destroy();
+    this.pauseMenu?.destroy();
+    this.loadoutHud?.destroy();
     this.worldRenderer?.destroy();
   }
 
@@ -108,7 +120,7 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setDeadzone(80, 60);
 
     for (let i = 0; i < WAVES.INITIAL_ENEMIES; i++) {
-      Enemy.spawnOutsideCamera(this);
+      Enemy.spawnOutsideCamera(this, 'slime');
     }
   }
 
@@ -186,10 +198,57 @@ export class GameScene extends Phaser.Scene {
     };
 
     this.escHandler = () => {
-      if (this.levelUpActive || this.gameOver) return;
-      SceneTransition.toMenu(this);
+      if (this.gameOver) return;
+      if (this.levelUpActive) return;
+      if (this.pauseActive) {
+        this.closePause();
+        return;
+      }
+      this.openPause();
     };
     this.input.keyboard.on('keydown-ESC', this.escHandler);
+  }
+
+  openPause() {
+    if (this.pauseActive || this.levelUpActive || this.gameOver) return;
+    this.pauseActive = true;
+    this.runState.isPaused = true;
+    this.physics.pause();
+    this.pauseMenu = new PauseMenu(this, () => this.closePause());
+  }
+
+  closePause() {
+    this.pauseMenu?.destroy();
+    this.pauseMenu = null;
+    this.pauseActive = false;
+    this.runState.isPaused = false;
+    if (!this.gameOver && !this.levelUpActive) {
+      this.physics.resume();
+    }
+  }
+
+  showMilestoneToast(message) {
+    const { width, height } = this.scale;
+    const txt = GameUI.headingText(this, width / 2, height * 0.2, message, {
+      size: '18px', color: UI.textGold, depth: 150, origin: 0.5,
+    }).setAlpha(0);
+
+    this.tweens.add({
+      targets: txt,
+      alpha: 1,
+      y: height * 0.18,
+      duration: 350,
+      ease: 'Cubic.easeOut',
+    });
+
+    this.time.delayedCall(2200, () => {
+      this.tweens.add({
+        targets: txt,
+        alpha: 0,
+        duration: 400,
+        onComplete: () => txt.destroy(),
+      });
+    });
   }
 
   setupCollisions() {
@@ -273,19 +332,21 @@ export class GameScene extends Phaser.Scene {
     this.runState.isPaused = true;
     this.physics.pause();
 
-    const choices = pickRandomUpgrades(this.player, this.runState, 3);
-    if (choices.length === 0) {
+    const choices = pickLevelUpChoices(this.runState);
+    if (choices.stats.length === 0 && choices.weapons.length === 0) {
       this.runState.pendingLevelUps = 0;
       this.finishLevelUp();
       return;
     }
 
-    const upgradeIds = choices.map((c) => c.id);
-    this.upgradePicker = new UpgradePicker(this, upgradeIds, (upgradeId) => {
-      this.runState.recordUpgrade(upgradeId);
-      applyUpgrade(this.player, upgradeId);
-      this.updateXpHud();
-      this.updateHearts();
+    this.upgradePicker = new UpgradePicker(this, choices, (upgradeId) => {
+      if (upgradeId) {
+        this.runState.recordUpgrade(upgradeId);
+        applyUpgrade(this.player, upgradeId);
+        this.updateXpHud();
+        this.updateHearts();
+        this.loadoutHud?.refresh();
+      }
       this.finishLevelUp();
     });
   }
@@ -366,8 +427,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   fireProjectile(x, y, dirX, dirY, opts = {}) {
-    const proj = this.projectiles.create(x, y, 'projectile');
-    proj.setDepth(12).setScale(GAME.SPRITE_SCALE);
+    const texture = opts.texture ?? 'proj_arcane';
+    const proj = this.projectiles.create(x, y, texture);
+    proj.setDepth(12).setScale(GAME.SPRITE_SCALE * (opts.scale ?? 1));
+    if (opts.tint) proj.setTint(opts.tint);
     proj.damage = opts.damage ?? PLAYER_CFG.PROJECTILE_DAMAGE;
     proj.pierceRemaining = opts.pierce ?? 0;
     proj.prevX = x;
@@ -375,7 +438,37 @@ export class GameScene extends Phaser.Scene {
     proj.body.setVelocity(dirX * 280, dirY * 280);
     Hitboxes.configureProjectile(proj);
 
-    this.time.delayedCall(1800, () => { if (proj.active) proj.destroy(); });
+    if (opts.trailColor) {
+      proj.trail = this.time.addEvent({
+        delay: 40,
+        loop: true,
+        callback: () => {
+          if (!proj.active) {
+            proj.trail?.remove();
+            return;
+          }
+          const spark = this.add.image(proj.x, proj.y, 'particle')
+            .setTint(opts.trailColor)
+            .setScale(1.5)
+            .setDepth(11)
+            .setAlpha(0.85);
+          this.tweens.add({
+            targets: spark,
+            alpha: 0,
+            scale: 0.2,
+            duration: 200,
+            onComplete: () => spark.destroy(),
+          });
+        },
+      });
+    }
+
+    this.time.delayedCall(1800, () => {
+      if (proj.active) {
+        proj.trail?.remove();
+        proj.destroy();
+      }
+    });
   }
 
   onEnemyHit(x, y, damage, color) {
@@ -509,7 +602,7 @@ export class GameScene extends Phaser.Scene {
 
   update(time, delta) {
     if (this.gameOver || !this.player?.sprite?.active) return;
-    if (this.levelUpActive) return;
+    if (this.levelUpActive || this.pauseActive) return;
 
     this.runState.update(delta);
     this.updateTimerHud();
@@ -526,12 +619,6 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.checkProjectileHits();
-
-    const spawnInterval = getSpawnIntervalForTime(this.runState.elapsedMs);
-    this.spawnTimer += delta;
-    if (this.spawnTimer >= spawnInterval) {
-      this.spawnTimer = 0;
-      Enemy.spawnOutsideCamera(this);
-    }
+    this.spawnDirector.update(delta, this.runState.elapsedMs);
   }
 }

@@ -183,7 +183,8 @@ export class Enemy {
     return 'slime';
   }
 
-  static spawnOutsideCamera(scene) {
+  static spawnOutsideCamera(scene, typeKey = null) {
+    const resolvedType = typeKey ?? Enemy.getRandomType();
     const worldMap = scene.worldMap;
     if (!worldMap) {
       return Enemy.spawnAtEdgeLegacy(scene);
@@ -225,16 +226,17 @@ export class Enemy {
       y = Phaser.Math.Clamp(y, margin, worldMap.heightPx - margin);
 
       if (!Phaser.Geom.Rectangle.Contains(view, x, y) && !worldMap.isBlockedWorld(x, y)) {
-        const enemy = new Enemy(scene, x, y, Enemy.getRandomType());
+        const enemy = new Enemy(scene, x, y, resolvedType);
         scene.enemies.add(enemy.sprite);
         return enemy;
       }
     }
 
-    return Enemy.spawnAtEdgeLegacy(scene);
+    return Enemy.spawnAtEdgeLegacy(scene, resolvedType);
   }
 
-  static spawnAtEdgeLegacy(scene) {
+  static spawnAtEdgeLegacy(scene, typeKey = null) {
+    const resolvedType = typeKey ?? Enemy.getRandomType();
     const margin = 40;
     const cam = scene.cameras.main;
     const edge = Phaser.Math.Between(0, 3);
@@ -259,7 +261,7 @@ export class Enemy {
         y = cam.scrollY + Phaser.Math.Between(margin, cam.height - margin);
     }
 
-    const enemy = new Enemy(scene, x, y, Enemy.getRandomType());
+    const enemy = new Enemy(scene, x, y, resolvedType);
     scene.enemies.add(enemy.sprite);
     return enemy;
   }

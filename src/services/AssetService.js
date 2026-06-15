@@ -25,7 +25,8 @@ export class AssetService {
   static #assertCoreTextures(game) {
     const required = [
       'tileset', 'player', 'enemy_slime', 'enemy_skeleton', 'enemy_bat',
-      'projectile', 'particle', 'shadow', 'heart', 'heart_empty',
+      'projectile', 'proj_arcane', 'proj_pierce', 'proj_ember', 'weapon_blade',
+      'particle', 'shadow', 'heart', 'heart_empty',
       'xp_gem', 'vacuum_item',
     ];
     const missing = required.filter((k) => !game.textures.exists(k));
