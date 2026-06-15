@@ -1,73 +1,103 @@
 import { PAL } from './SnesPalettes.js';
+import { FONTS } from '../config/GameConfig.js';
 
-/** Draw FF6-style SNES menu windows using 9-slice from ui_window texture. */
+/** FF6-style SNES menu windows and text helpers. */
 export class SnesUI {
   static drawWindow(scene, x, y, w, h, depth = 50) {
-    const container = scene.add.container(x, y).setDepth(depth).setScrollFactor(0);
-    const g = scene.add.graphics();
-    this.fillWindow(g, 0, 0, w, h);
-    container.add(g);
-    return container;
+    const g = scene.add.graphics().setDepth(depth).setScrollFactor(0);
+    SnesUI.fillWindow(g, x, y, w, h);
+    return g;
   }
 
   static fillWindow(g, x, y, w, h) {
-    const b = 2; // border width
-    // Outer white
+    const b = 2;
     g.fillStyle(parseInt(PAL.uiWhite.slice(1), 16));
     g.fillRect(x, y, w, h);
-    // Blue fill
     g.fillStyle(parseInt(PAL.uiFill.slice(1), 16));
     g.fillRect(x + b, y + b, w - b * 2, h - b * 2);
-    // Top/left highlight
     g.fillStyle(parseInt(PAL.uiHighlight.slice(1), 16));
     g.fillRect(x + b, y + b, w - b * 2, 1);
     g.fillRect(x + b, y + b, 1, h - b * 2);
-    // Bottom/right shadow
     g.fillStyle(parseInt(PAL.uiShadow.slice(1), 16));
     g.fillRect(x + w - b - 1, y + b, 1, h - b * 2);
     g.fillRect(x + b, y + h - b - 1, w - b * 2, 1);
   }
 
+  /** Decorative screen border (letterbox frame). */
+  static drawScreenBorder(scene, width, height) {
+    const g = scene.add.graphics().setDepth(100).setScrollFactor(0);
+    const m = 8;
+    g.lineStyle(2, parseInt(PAL.uiWhite.slice(1), 16));
+    g.strokeRect(m, m, width - m * 2, height - m * 2);
+    g.lineStyle(1, parseInt(PAL.uiHighlight.slice(1), 16));
+    g.strokeRect(m + 3, m + 3, width - (m + 3) * 2, height - (m + 3) * 2);
+    return g;
+  }
+
   static snesText(scene, x, y, text, opts = {}) {
     return scene.add.text(x, y, text, {
-      fontFamily: '"Courier New", Courier, monospace',
+      fontFamily: FONTS.PIXEL,
       fontSize: opts.size || '16px',
       color: opts.color || PAL.uiText,
       resolution: 2,
       ...opts.style,
-    }).setDepth(opts.depth || 51).setScrollFactor(0);
+    }).setDepth(opts.depth ?? 51).setScrollFactor(0);
   }
 
+  /**
+   * SNES menu row with a blinking cursor and reliable hit area.
+   */
   static createMenuItem(scene, x, y, label, onSelect) {
+    const rowH = 28;
+    const rowW = 240;
+
     const bg = scene.add.graphics().setDepth(55).setScrollFactor(0);
-    const text = scene.add.text(x, y, label, {
-      fontFamily: '"Courier New", Courier, monospace',
-      fontSize: '18px',
+    const cursor = scene.add.text(x + 4, y + 4, '▶', {
+      fontFamily: FONTS.PIXEL,
+      fontSize: '16px',
+      color: PAL.uiGold,
+      resolution: 2,
+    }).setDepth(56).setScrollFactor(0).setVisible(false);
+
+    const text = scene.add.text(x + 24, y + 4, label, {
+      fontFamily: FONTS.PIXEL,
+      fontSize: '16px',
       color: PAL.uiText,
       resolution: 2,
-    }).setOrigin(0, 0).setDepth(56).setScrollFactor(0);
+    }).setDepth(56).setScrollFactor(0);
 
-    const pad = 12;
-    const w = text.width + pad * 2;
-    const h = text.height + pad;
+    const hitZone = scene.add.zone(x, y, rowW, rowH)
+      .setOrigin(0, 0)
+      .setDepth(57)
+      .setScrollFactor(0)
+      .setInteractive({ useHandCursor: true });
 
     const redraw = (selected) => {
       bg.clear();
       if (selected) {
         bg.fillStyle(parseInt(PAL.uiHighlight.slice(1), 16));
-        bg.fillRect(x - pad, y - pad / 2, w, h);
+        bg.fillRect(x, y, rowW, rowH);
         text.setColor(PAL.uiGold);
+        cursor.setVisible(true);
       } else {
         text.setColor(PAL.uiText);
+        cursor.setVisible(false);
       }
     };
     redraw(false);
 
-    text.setInteractive({ useHandCursor: true });
-    text.on('pointerover', () => redraw(true));
-    text.on('pointerout', () => redraw(false));
-    text.on('pointerdown', onSelect);
+    hitZone.on('pointerover', () => redraw(true));
+    hitZone.on('pointerout', () => redraw(false));
+    hitZone.on('pointerdown', onSelect);
 
-    return { text, bg };
+    scene.tweens.add({
+      targets: cursor,
+      alpha: { from: 1, to: 0 },
+      duration: 400,
+      yoyo: true,
+      repeat: -1,
+    });
+
+    return { text, bg, cursor, hitZone };
   }
 }

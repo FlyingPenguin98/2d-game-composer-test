@@ -5,40 +5,57 @@ import { PAL, PixelCanvas, TILE } from './SnesPalettes.js';
  * Limited palettes, 1px outlines, dithered shading — no HD lighting.
  */
 export class TextureGenerator {
-  static generateAll(scene) {
-    this.generateTileset(scene);
-    this.generatePlayerSheet(scene);
-    this.generateEnemies(scene);
-    this.generateProjectiles(scene);
-    this.generateFX(scene);
-    this.generateUI(scene);
+  static generateAll(textures) {
+    this._tex = textures.textures ?? textures;
+    this.generateTileset();
+    this.generatePlayerSheet();
+    this.generateEnemies();
+    this.generateProjectiles();
+    this.generateFX();
+    this.generateUI();
   }
 
-  static addCanvas(scene, key, canvas) {
-    if (scene.textures.exists(key)) scene.textures.remove(key);
-    scene.textures.addCanvas(key, canvas);
+  static addCanvas(key, canvas) {
+    const tex = this._tex;
+    if (tex.exists(key)) tex.remove(key);
+    tex.addCanvas(key, canvas);
   }
 
   /** Split canvas textures into proper 16×16 animation frames. */
-  static registerFrames(scene) {
+  static registerFrames(textures) {
+    const tex = textures.textures ?? textures;
     const sheets = [
       { key: 'player', fw: 16, fh: 16, count: 8 },
       { key: 'enemy_slime', fw: 16, fh: 16, count: 2 },
       { key: 'enemy_bat', fw: 16, fh: 16, count: 2 },
     ];
     for (const { key, fw, fh, count } of sheets) {
-      const tex = scene.textures.get(key);
+      const sheet = tex.get(key);
       for (let i = 0; i < count; i++) {
-        if (!tex.has(i)) {
-          tex.add(i, 0, i * fw, 0, fw, fh);
+        if (!sheet.has(i)) {
+          sheet.add(i, 0, i * fw, 0, fw, fh);
         }
+      }
+    }
+  }
+
+  /** Register individual tile frames for reliable rendering (avoids setCrop bugs). */
+  static registerTileFrames(textures) {
+    const tex = textures.textures ?? textures;
+    const sheet = tex.get('tileset');
+    const cols = 8;
+    const tileCount = 16;
+    for (let i = 0; i < tileCount; i++) {
+      const name = `tile_${i}`;
+      if (!sheet.has(name)) {
+        sheet.add(name, 0, (i % cols) * TILE, Math.floor(i / cols) * TILE, TILE, TILE);
       }
     }
   }
 
   // ── Tileset (16×16 tiles in a sheet) ──────────────────────────────
 
-  static generateTileset(scene) {
+  static generateTileset() {
     const cols = 8;
     const rows = 4;
     const canvas = document.createElement('canvas');
@@ -73,7 +90,7 @@ export class TextureGenerator {
       ctx.drawImage(tileCanvas, tx, ty);
     });
 
-    this.addCanvas(scene, 'tileset', canvas);
+    this.addCanvas( 'tileset', canvas);
   }
 
   static tileGrass(c1, c2) {
@@ -225,7 +242,7 @@ export class TextureGenerator {
 
   // ── Player sprite sheet (16×16, 4 dirs × 2 walk frames) ───────────
 
-  static generatePlayerSheet(scene) {
+  static generatePlayerSheet() {
     const fw = 16;
     const fh = 16;
     const frames = 8; // down0, down1, up0, up1, left0, left1, right0, right1
@@ -243,7 +260,7 @@ export class TextureGenerator {
       }
     });
 
-    this.addCanvas(scene, 'player', canvas);
+    this.addCanvas( 'player', canvas);
   }
 
   static drawHero(dir, step) {
@@ -315,13 +332,13 @@ export class TextureGenerator {
 
   // ── Enemies ───────────────────────────────────────────────────────
 
-  static generateEnemies(scene) {
-    this.generateSlime(scene);
-    this.generateSkeleton(scene);
-    this.generateBat(scene);
+  static generateEnemies() {
+    this.generateSlime();
+    this.generateSkeleton();
+    this.generateBat();
   }
 
-  static generateSlime(scene) {
+  static generateSlime() {
     const fw = 16;
     const frames = 2;
     const canvas = document.createElement('canvas');
@@ -357,10 +374,10 @@ export class TextureGenerator {
       ctx.drawImage(pc.flush(), f * fw, 0);
     }
 
-    this.addCanvas(scene, 'enemy_slime', canvas);
+    this.addCanvas( 'enemy_slime', canvas);
   }
 
-  static generateSkeleton(scene) {
+  static generateSkeleton() {
     const pc = new PixelCanvas(16, 16, 1);
 
     // Skull
@@ -394,10 +411,10 @@ export class TextureGenerator {
     pc.set(9, 13, PAL.bone2);
 
     pc.outline();
-    this.addCanvas(scene, 'enemy_skeleton', pc.flush());
+    this.addCanvas( 'enemy_skeleton', pc.flush());
   }
 
-  static generateBat(scene) {
+  static generateBat() {
     const fw = 16;
     const frames = 2;
     const canvas = document.createElement('canvas');
@@ -441,12 +458,12 @@ export class TextureGenerator {
       ctx.drawImage(pc.flush(), f * fw, 0);
     }
 
-    this.addCanvas(scene, 'enemy_bat', canvas);
+    this.addCanvas( 'enemy_bat', canvas);
   }
 
   // ── Projectiles & FX ──────────────────────────────────────────────
 
-  static generateProjectiles(scene) {
+  static generateProjectiles() {
     const pc = new PixelCanvas(8, 8, 1);
     pc.set(3, 3, PAL.bolt1);
     pc.set(4, 3, PAL.bolt1);
@@ -456,13 +473,13 @@ export class TextureGenerator {
     pc.set(5, 4, PAL.bolt3);
     pc.set(3, 2, PAL.bolt3);
     pc.set(4, 5, PAL.bolt3);
-    this.addCanvas(scene, 'projectile', pc.flush());
+    this.addCanvas( 'projectile', pc.flush());
   }
 
-  static generateFX(scene) {
+  static generateFX() {
     const pc = new PixelCanvas(4, 4, 1);
     pc.rect(1, 1, 2, 2, PAL.white);
-    this.addCanvas(scene, 'particle', pc.flush());
+    this.addCanvas( 'particle', pc.flush());
 
     // 8×8 SNES shadow blob
     const sh = new PixelCanvas(8, 4, 1);
@@ -488,7 +505,7 @@ export class TextureGenerator {
     sh2.set(4, 2, '#303830');
     sh2.set(5, 2, '#303830');
     sh2.set(6, 2, '#203020');
-    this.addCanvas(scene, 'shadow', sh2.flush());
+    this.addCanvas( 'shadow', sh2.flush());
 
     // Heart icon for HUD
     const heart = new PixelCanvas(8, 8, 1);
@@ -508,7 +525,7 @@ export class TextureGenerator {
     heart.set(4, 6, PAL.boneEye);
     heart.set(3, 7, PAL.boneEye);
     heart.set(4, 7, PAL.boneEye);
-    this.addCanvas(scene, 'heart', heart.flush());
+    this.addCanvas( 'heart', heart.flush());
 
     // Empty heart
     const heartEmpty = new PixelCanvas(8, 8, 1);
@@ -521,10 +538,10 @@ export class TextureGenerator {
     heartEmpty.set(5, 6, PAL.bone3);
     heartEmpty.set(3, 7, PAL.bone3);
     heartEmpty.set(4, 7, PAL.bone3);
-    this.addCanvas(scene, 'heart_empty', heartEmpty.flush());
+    this.addCanvas( 'heart_empty', heartEmpty.flush());
   }
 
-  static generateUI(scene) {
+  static generateUI() {
     // 32×32 SNES window corner tile (FF6 style)
     const pc = new PixelCanvas(32, 32, 1);
     // Outer white border
@@ -536,6 +553,6 @@ export class TextureGenerator {
     pc.rect(2, 2, 2, 28, PAL.uiHighlight);
     pc.rect(28, 2, 2, 28, PAL.uiShadow);
     pc.rect(2, 28, 28, 2, PAL.uiShadow);
-    this.addCanvas(scene, 'ui_window', pc.flush());
+    this.addCanvas( 'ui_window', pc.flush());
   }
 }

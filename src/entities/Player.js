@@ -1,8 +1,13 @@
 import { PAL, SPRITE_SCALE } from '../utils/SnesPalettes.js';
+import { PLAYER as PLAYER_CFG } from '../config/GameConfig.js';
 
 export class Player {
   constructor(scene, x, y) {
     this.scene = scene;
+    this.invincible = false;
+
+    Player.registerAnims(scene);
+
     this.sprite = scene.physics.add.sprite(x, y, 'player', 0);
     this.sprite.setScale(SPRITE_SCALE);
     this.sprite.setDepth(10);
@@ -10,19 +15,15 @@ export class Player {
     this.sprite.body.setOffset(10, 20);
     this.sprite.setCollideWorldBounds(true);
 
-    this.speed = 130;
-    this.maxHealth = 100;
-    this.health = 100;
-    this.attackCooldown = 450;
+    this.speed = PLAYER_CFG.SPEED;
+    this.maxHealth = PLAYER_CFG.MAX_HEALTH;
+    this.health = PLAYER_CFG.MAX_HEALTH;
+    this.attackCooldown = PLAYER_CFG.ATTACK_COOLDOWN;
     this.lastAttack = 0;
     this.facing = 'down';
-    this.walkFrame = 0;
-    this.walkTimer = 0;
 
     this.shadow = scene.add.image(x, y + 14, 'shadow').setDepth(5).setScale(SPRITE_SCALE);
     this.shadow.setAlpha(0.7);
-
-    this.registerAnims(scene);
   }
 
   static registerAnims(scene) {
@@ -83,9 +84,9 @@ export class Player {
   }
 
   findNearestEnemy() {
-    const enemies = this.scene.enemies.getChildren();
+    const enemies = this.scene.enemies?.getChildren() ?? [];
     let nearest = null;
-    let minDist = 280;
+    let minDist = PLAYER_CFG.ATTACK_RANGE;
 
     for (const enemy of enemies) {
       if (!enemy.active) continue;
@@ -113,18 +114,19 @@ export class Player {
       Math.sin(angle)
     );
 
-    // SNES-style flash: brief white tint
     this.sprite.setTint(0xffffff);
-    this.scene.time.delayedCall(60, () => this.sprite.clearTint());
+    this.scene.time.delayedCall(60, () => {
+      if (this.sprite?.active) this.sprite.clearTint();
+    });
   }
 
   takeDamage(amount) {
-    this.health -= amount;
+    if (this.invincible) return;
+    this.health = Math.max(0, this.health - amount);
 
-    // SNES damage flash — palette swap via tint
     this.sprite.setTint(0xff8080);
     this.scene.time.delayedCall(120, () => {
-      if (this.sprite.active) this.sprite.clearTint();
+      if (this.sprite?.active) this.sprite.clearTint();
     });
 
     if (this.health <= 0) this.die();
@@ -135,7 +137,7 @@ export class Player {
   }
 
   destroy() {
-    this.shadow.destroy();
-    this.sprite.destroy();
+    this.shadow?.destroy();
+    this.sprite?.destroy();
   }
 }

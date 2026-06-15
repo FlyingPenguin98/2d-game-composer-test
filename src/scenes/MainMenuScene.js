@@ -1,5 +1,8 @@
 import { PAL, TILE, SPRITE_SCALE } from '../utils/SnesPalettes.js';
 import { SnesUI } from '../utils/SnesUI.js';
+import { SceneTransition } from '../utils/SceneTransition.js';
+import { AssetService } from '../services/AssetService.js';
+import { FONTS } from '../config/GameConfig.js';
 
 export class MainMenuScene extends Phaser.Scene {
   constructor() {
@@ -7,143 +10,133 @@ export class MainMenuScene extends Phaser.Scene {
   }
 
   create() {
+    AssetService.assertReady(this.game);
+
     const { width, height } = this.scale;
     this.cameras.main.setBackgroundColor(PAL.uiShadow);
 
-    this.drawSky(width, height);
-    this.drawTileBorder(width, height);
-    this.drawTitle(width);
-    this.drawMenuBox(width, height);
+    this.drawBackground(width, height);
+    this.drawTitlePanel(width);
+    this.drawMenuPanel(width, height);
     this.drawHeroPreview(width, height);
+    SnesUI.drawScreenBorder(this, width, height);
 
-    this.cameras.main.fadeIn(400, 0, 0, 0);
+    SceneTransition.onEnter(this, 300);
   }
 
-  /** SNES title screens use flat color bands, not gradients. */
-  drawSky(width, height) {
-    const bands = [
-      { y: 0, h: 0.35, color: 0x3880c8 },
-      { y: 0.35, h: 0.15, color: 0x5090d0 },
-      { y: 0.5, h: 0.15, color: 0x68a0d8 },
-      { y: 0.65, h: 0.35, color: 0x287028 },
-    ];
+  drawBackground(width, height) {
     const g = this.add.graphics().setDepth(0);
-    for (const band of bands) {
-      g.fillStyle(band.color);
-      g.fillRect(0, height * band.y, width, height * band.h);
-    }
+
+    // SNES sky — 3 flat bands
+    g.fillStyle(0x3070b8);
+    g.fillRect(0, 0, width, height * 0.45);
+    g.fillStyle(0x4890d0);
+    g.fillRect(0, height * 0.45, width, height * 0.12);
+    g.fillStyle(0x287028);
+    g.fillRect(0, height * 0.57, width, height * 0.43);
 
     // Pixel clouds
-    const cloudColor = 0xf0f0f8;
-    const drawCloud = (cx, cy, s) => {
-      g.fillStyle(cloudColor);
-      g.fillRect(cx, cy, 4 * s, 2 * s);
-      g.fillRect(cx + s, cy - s, 3 * s, 2 * s);
-      g.fillRect(cx + 3 * s, cy, 3 * s, 2 * s);
+    const drawCloud = (cx, cy) => {
+      g.fillStyle(0xf0f0f8);
+      g.fillRect(cx, cy, 24, 8);
+      g.fillRect(cx + 8, cy - 8, 16, 8);
+      g.fillRect(cx + 16, cy, 20, 8);
     };
-    drawCloud(80, 60, 4);
-    drawCloud(320, 40, 3);
-    drawCloud(600, 70, 5);
-    drawCloud(780, 50, 3);
+    drawCloud(60, 50);
+    drawCloud(280, 30);
+    drawCloud(520, 55);
+    drawCloud(740, 35);
 
-    // Distant mountain silhouettes
+    // Mountains
     g.fillStyle(0x185818);
-    for (let i = 0; i < 8; i++) {
-      const mx = i * 130 - 20;
-      const mh = 40 + (i % 3) * 20;
-      g.fillTriangle(mx, height * 0.65, mx + 60, height * 0.65, mx + 30, height * 0.65 - mh);
+    for (let i = 0; i < 7; i++) {
+      const mx = i * 150 - 10;
+      const mh = 50 + (i % 3) * 16;
+      g.fillTriangle(mx, height * 0.57, mx + 70, height * 0.57, mx + 35, height * 0.57 - mh);
     }
-  }
 
-  drawTileBorder(width, height) {
+    // Tiled meadow
     const displayTile = TILE * SPRITE_SCALE;
+    const groundY = height * 0.57;
+    const rows = Math.ceil((height - groundY) / displayTile) + 1;
+    const cols = Math.ceil(width / displayTile) + 1;
 
-    // Grass strip along bottom third
-    for (let col = 0; col < Math.ceil(width / displayTile); col++) {
-      const frame = col % 2;
-      this.add.image(col * displayTile, height * 0.65, 'tileset')
-        .setOrigin(0, 0)
-        .setDisplaySize(displayTile, displayTile)
-        .setDepth(1)
-        .setCrop(frame * TILE, 0, TILE, TILE);
-    }
-    for (let col = 0; col < Math.ceil(width / displayTile); col++) {
-      this.add.image(col * displayTile, height * 0.65 + displayTile, 'tileset')
-        .setOrigin(0, 0)
-        .setDisplaySize(displayTile, displayTile)
-        .setDepth(1)
-        .setCrop((col % 2) * TILE, 0, TILE, TILE);
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const tileIdx = (col + row) % 2 === 0 ? 0 : 1;
+        if ((col + row) % 5 === 0) {
+          this.add.image(col * displayTile, groundY + row * displayTile, 'tileset', `tile_2`)
+            .setOrigin(0, 0).setDisplaySize(displayTile, displayTile).setDepth(1);
+        } else {
+          this.add.image(col * displayTile, groundY + row * displayTile, 'tileset', `tile_${tileIdx}`)
+            .setOrigin(0, 0).setDisplaySize(displayTile, displayTile).setDepth(1);
+        }
+      }
     }
   }
 
-  drawTitle(width) {
-    const titleY = this.scale.height * 0.18;
+  drawTitlePanel(width) {
+    const panelW = 420;
+    const panelH = 72;
+    const panelX = width / 2 - panelW / 2;
+    const panelY = 48;
 
-    // Title shadow
-    this.add.text(width / 2 + 2, titleY + 2, 'ELDERGROVE', {
-      fontFamily: '"Courier New", Courier, monospace',
-      fontSize: '48px',
-      color: '#001030',
-      resolution: 2,
-    }).setOrigin(0.5).setDepth(10);
+    SnesUI.drawWindow(this, panelX, panelY, panelW, panelH, 10);
 
-    this.add.text(width / 2, titleY, 'ELDERGROVE', {
-      fontFamily: '"Courier New", Courier, monospace',
-      fontSize: '48px',
+    this.add.text(width / 2, panelY + 22, 'ELDERGROVE', {
+      fontFamily: FONTS.PIXEL,
+      fontSize: '32px',
       color: PAL.uiGold,
       resolution: 2,
     }).setOrigin(0.5).setDepth(11);
 
-    this.add.text(width / 2, titleY + 44, 'Chronicles of the Arcane', {
-      fontFamily: '"Courier New", Courier, monospace',
-      fontSize: '14px',
-      color: PAL.uiText,
+    this.add.text(width / 2, panelY + 50, 'Chronicles of the Arcane', {
+      fontFamily: FONTS.PIXEL,
+      fontSize: '11px',
+      color: PAL.uiTextDim,
       resolution: 2,
     }).setOrigin(0.5).setDepth(11);
   }
 
-  drawMenuBox(width, height) {
-    const boxW = 280;
-    const boxH = 120;
+  drawMenuPanel(width, height) {
+    const boxW = 300;
+    const boxH = 130;
     const boxX = width / 2 - boxW / 2;
-    const boxY = height * 0.52;
+    const boxY = height * 0.58;
 
     SnesUI.drawWindow(this, boxX, boxY, boxW, boxH, 20);
 
-    SnesUI.createMenuItem(this, boxX + 20, boxY + 20, '▶  Start New Game', () => {
-      this.cameras.main.fadeOut(400, 0, 0, 0);
-      this.time.delayedCall(400, () => this.scene.start('GameScene'));
+    SnesUI.createMenuItem(this, boxX + 16, boxY + 16, 'Start New Game', () => {
+      SceneTransition.toGame(this);
     });
 
-    SnesUI.snesText(this, boxX + 20, boxY + 70, 'WASD / Arrows — Move', {
-      size: '12px',
-      color: PAL.uiTextDim,
-      depth: 21,
+    SnesUI.snesText(this, boxX + 24, boxY + 58, 'WASD / Arrows — Move', {
+      size: '11px', color: PAL.uiTextDim, depth: 21,
     });
-    SnesUI.snesText(this, boxX + 20, boxY + 88, 'Auto-attack nearest enemy', {
-      size: '12px',
-      color: PAL.uiTextDim,
-      depth: 21,
+    SnesUI.snesText(this, boxX + 24, boxY + 76, 'Auto-attack nearest foe', {
+      size: '11px', color: PAL.uiTextDim, depth: 21,
+    });
+    SnesUI.snesText(this, boxX + 24, boxY + 98, 'ESC — Menu (in game)', {
+      size: '11px', color: PAL.uiTextDim, depth: 21,
     });
   }
 
   drawHeroPreview(width, height) {
-    const hero = this.add.sprite(width / 2, height * 0.38, 'player', 0)
-      .setScale(SPRITE_SCALE * 2)
-      .setDepth(15);
+    const heroY = height * 0.36;
+
+    this.add.image(width / 2, heroY + 24, 'shadow')
+      .setScale(SPRITE_SCALE * 2).setDepth(14).setAlpha(0.7);
+
+    const hero = this.add.sprite(width / 2, heroY, 'player', 0)
+      .setScale(SPRITE_SCALE * 2).setDepth(15);
 
     this.tweens.add({
       targets: hero,
-      y: height * 0.38 - 4,
-      duration: 800,
+      y: heroY - 4,
+      duration: 700,
       yoyo: true,
       repeat: -1,
-      ease: 'Stepped',
+      ease: 'Sine.easeInOut',
     });
-
-    this.add.image(width / 2, height * 0.38 + 28, 'shadow')
-      .setScale(SPRITE_SCALE * 2)
-      .setDepth(14)
-      .setAlpha(0.7);
   }
 }

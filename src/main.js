@@ -2,11 +2,12 @@ import Phaser from 'phaser';
 import { BootScene } from './scenes/BootScene.js';
 import { MainMenuScene } from './scenes/MainMenuScene.js';
 import { GameScene } from './scenes/GameScene.js';
+import { GAME, SCENES } from './config/GameConfig.js';
 
 const config = {
   type: Phaser.AUTO,
-  width: 960,
-  height: 640,
+  width: GAME.WIDTH,
+  height: GAME.HEIGHT,
   parent: 'game-container',
   backgroundColor: '#185818',
   pixelArt: true,
@@ -30,3 +31,6 @@ const config = {
 };
 
 new Phaser.Game(config);
+
+// Export scene keys for debugging in console
+window.__ELDERGROVE__ = { SCENES };

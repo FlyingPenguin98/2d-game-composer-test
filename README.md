@@ -9,6 +9,11 @@ A top-down fantasy action game with **SNES / 16-bit pixel art** — limited pale
 - **Three Enemy Types** — Slimes, skeletons, and bats that chase the player
 - **HD-2D Visuals** — 16-bit SNES-style pixel art with dithered tiles, outlined sprites, and FF6-style menu windows
 
+## Documentation
+
+- [Requirements](docs/REQUIREMENTS.md) — full feature list, status, and open questions
+- [Architecture](docs/ARCHITECTURE.md) — scene flow, code layout, design decisions
+
 ## Getting Started
 
 ```bash
