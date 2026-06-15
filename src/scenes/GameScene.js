@@ -16,6 +16,11 @@ import {
   COMBAT,
   FONTS,
 } from '../config/GameConfig.js';
+import {
+  Hitboxes,
+  HIT_TEST,
+  segmentHitsCircle,
+} from '../utils/Hitboxes.js';
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -135,15 +140,6 @@ export class GameScene extends Phaser.Scene {
   }
 
   setupCollisions() {
-    this.physics.add.overlap(this.projectiles, this.enemies, (proj, enemySprite) => {
-      if (!proj.active || !enemySprite.active) return;
-      const hx = proj.x;
-      const hy = proj.y;
-      const dmg = proj.damage ?? PLAYER_CFG.PROJECTILE_DAMAGE;
-      proj.destroy();
-      enemySprite.enemyRef?.takeDamage(dmg, hx, hy);
-    });
-
     this.physics.add.overlap(this.player.sprite, this.enemies, (_p, enemySprite) => {
       if (!enemySprite.active || this.player.invincible) return;
       const cfg = enemySprite.enemyRef?.config;
@@ -157,12 +153,46 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  /** Reliable projectile hits — distance + segment sweep (no tunneling). */
+  checkProjectileHits() {
+    const enemies = this.enemies.getChildren();
+
+    for (const proj of this.projectiles.getChildren()) {
+      if (!proj.active) continue;
+
+      const px = proj.x;
+      const py = proj.y;
+      const prevX = proj.prevX ?? px;
+      const prevY = proj.prevY ?? py;
+
+      for (const enemySprite of enemies) {
+        if (!enemySprite.active) continue;
+        const ref = enemySprite.enemyRef;
+        if (!ref || ref.state === 'dead') continue;
+
+        if (segmentHitsCircle(prevX, prevY, px, py, enemySprite.x, enemySprite.y, HIT_TEST.ENEMY_RADIUS)) {
+          const dmg = proj.damage ?? PLAYER_CFG.PROJECTILE_DAMAGE;
+          proj.destroy();
+          ref.takeDamage(dmg, px, py);
+          break;
+        }
+      }
+
+      if (proj.active) {
+        proj.prevX = px;
+        proj.prevY = py;
+      }
+    }
+  }
+
   fireProjectile(x, y, dirX, dirY) {
     const proj = this.projectiles.create(x, y, 'projectile');
     proj.setDepth(12).setScale(GAME.SPRITE_SCALE);
     proj.damage = PLAYER_CFG.PROJECTILE_DAMAGE;
+    proj.prevX = x;
+    proj.prevY = y;
     proj.body.setVelocity(dirX * 280, dirY * 280);
-    proj.body.setSize(8, 8);
+    Hitboxes.configureProjectile(proj);
 
     this.time.delayedCall(1800, () => { if (proj.active) proj.destroy(); });
   }
@@ -292,6 +322,8 @@ export class GameScene extends Phaser.Scene {
         enemySprite.enemyRef.update(time, this.player.sprite.x, this.player.sprite.y);
       }
     }
+
+    this.checkProjectileHits();
 
     const spawnInterval = getSpawnIntervalForTime(this.runState.elapsedMs);
     this.spawnTimer += delta;

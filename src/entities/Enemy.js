@@ -1,5 +1,6 @@
 import { SPRITE_SCALE } from '../utils/SnesPalettes.js';
 import { WORLD, COMBAT } from '../config/GameConfig.js';
+import { Hitboxes } from '../utils/Hitboxes.js';
 
 const ENEMY_STATE = {
   CHASE: 'chase',
@@ -58,8 +59,7 @@ export class Enemy {
     this.sprite.setDepth(8);
     this.sprite.enemyRef = this;
 
-    this.sprite.body.setSize(10, 8);
-    this.sprite.body.setOffset(11, 18);
+    Hitboxes.configureEnemy(this.sprite);
     this.sprite.setCollideWorldBounds(true);
 
     this.health = this.config.health;

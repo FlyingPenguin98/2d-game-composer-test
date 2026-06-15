@@ -134,10 +134,14 @@ export class TextureGenerator {
 
   static tileStone() {
     const pc = new PixelCanvas(TILE, TILE, 1);
-    pc.rect(0, 0, TILE, TILE, PAL.stone2);
-    // Cobble pattern
-    for (let y = 0; y < TILE; y += 4) {
-      for (let x = (y / 4) % 2 === 0 ? 0 : 4; x < TILE; x += 8) {
+    pc.ditherRect(0, 0, TILE, TILE, PAL.grassDark, PAL.grass2);
+    pc.rect(1, 5, TILE - 2, TILE - 6, PAL.stone2);
+    pc.rect(0, 0, TILE, 1, PAL.black);
+    pc.rect(0, TILE - 1, TILE, 1, PAL.black);
+    pc.rect(0, 0, 1, TILE, PAL.black);
+    pc.rect(TILE - 1, 0, 1, TILE, PAL.black);
+    for (let y = 5; y < TILE; y += 4) {
+      for (let x = (y / 4) % 2 === 0 ? 1 : 5; x < TILE - 1; x += 8) {
         pc.rect(x, y, 7, 3, PAL.stone1);
         pc.set(x, y, PAL.stone3);
         pc.set(x + 6, y + 2, PAL.stone3);
@@ -156,37 +160,49 @@ export class TextureGenerator {
 
   static tileTrunk() {
     const pc = new PixelCanvas(TILE, TILE, 1);
-    pc.ditherRect(0, 0, TILE, TILE, PAL.grass1, PAL.grass2);
-    pc.rect(6, 4, 4, 12, PAL.trunk2);
-    pc.rect(7, 4, 2, 12, PAL.trunk1);
-    pc.set(6, 4, PAL.trunk3);
-    pc.set(9, 4, PAL.trunk3);
+    pc.ditherRect(0, 0, TILE, TILE, PAL.grass2, PAL.grassDark);
+    pc.rect(5, 13, 6, 3, PAL.dirt3);
+    pc.rect(6, 3, 4, 12, PAL.trunk2);
+    pc.rect(7, 3, 2, 12, PAL.trunk1);
+    pc.set(5, 3, PAL.trunk3);
+    pc.set(10, 3, PAL.trunk3);
+    pc.set(5, 14, PAL.black);
+    pc.set(10, 14, PAL.black);
+    pc.set(6, 2, PAL.trunk3);
+    pc.set(9, 2, PAL.trunk3);
     return pc.flush();
   }
 
   static tileBush() {
     const pc = new PixelCanvas(TILE, TILE, 1);
-    pc.ditherRect(0, 0, TILE, TILE, PAL.grass1, PAL.grass2);
-    pc.rect(4, 8, 8, 6, PAL.leaf2);
-    pc.rect(3, 6, 10, 4, PAL.leaf1);
-    pc.rect(5, 5, 6, 2, PAL.leaf1);
-    pc.set(4, 8, PAL.leaf3);
-    pc.set(11, 9, PAL.leaf3);
-    pc.set(7, 5, PAL.leaf4);
+    pc.ditherRect(0, 0, TILE, TILE, PAL.grass2, PAL.grassDark);
+    pc.rect(4, 13, 8, 2, PAL.dirt3);
+    pc.rect(3, 7, 10, 6, PAL.leaf2);
+    pc.rect(2, 5, 12, 4, PAL.leaf1);
+    pc.rect(4, 4, 8, 2, PAL.leaf1);
+    pc.set(2, 7, PAL.leaf4);
+    pc.set(13, 8, PAL.leaf4);
+    pc.set(7, 4, PAL.leaf4);
+    pc.set(3, 6, PAL.black);
+    pc.set(12, 6, PAL.black);
+    pc.set(4, 12, PAL.leaf3);
+    pc.set(11, 11, PAL.leaf3);
     return pc.flush();
   }
 
   static tileCanopyFull() {
     const pc = new PixelCanvas(TILE, TILE, 1);
-    pc.rect(0, 0, TILE, TILE, PAL.leaf2);
-    pc.rect(1, 1, TILE - 2, TILE - 2, PAL.leaf1);
-    pc.rect(3, 3, TILE - 6, TILE - 6, PAL.leaf3);
-    pc.set(5, 5, PAL.leaf4);
-    pc.set(10, 7, PAL.leaf4);
-    pc.set(7, 10, PAL.leaf4);
-    // Highlight dots
-    pc.set(4, 4, PAL.leaf1);
-    pc.set(11, 5, PAL.leaf1);
+    pc.ditherRect(0, 0, TILE, TILE, PAL.grass2, PAL.grassDark);
+    pc.rect(1, 0, TILE - 2, 12, PAL.leaf2);
+    pc.rect(2, 1, TILE - 4, 10, PAL.leaf1);
+    pc.rect(4, 2, TILE - 8, 7, PAL.leaf3);
+    pc.set(5, 3, PAL.leaf4);
+    pc.set(10, 5, PAL.leaf4);
+    pc.set(7, 8, PAL.leaf4);
+    pc.set(1, 0, PAL.black);
+    pc.set(14, 0, PAL.black);
+    pc.set(0, 6, PAL.black);
+    pc.set(15, 7, PAL.black);
     return pc.flush();
   }
 
@@ -232,9 +248,16 @@ export class TextureGenerator {
     const pc = new PixelCanvas(TILE, TILE, 1);
     const light = frame === 0 ? PAL.water1 : PAL.water2;
     const dark = frame === 0 ? PAL.water2 : PAL.water3;
-    pc.ditherRect(0, 0, TILE, TILE, light, dark);
-    // Wave lines
-    for (let x = 0; x < TILE; x++) {
+    pc.ditherRect(1, 1, TILE - 2, TILE - 2, light, dark);
+    pc.rect(0, 0, TILE, 1, PAL.water3);
+    pc.rect(0, TILE - 1, TILE, 1, PAL.water3);
+    pc.rect(0, 0, 1, TILE, PAL.water3);
+    pc.rect(TILE - 1, 0, 1, TILE, PAL.water3);
+    pc.set(0, 0, PAL.black);
+    pc.set(TILE - 1, 0, PAL.black);
+    pc.set(0, TILE - 1, PAL.black);
+    pc.set(TILE - 1, TILE - 1, PAL.black);
+    for (let x = 1; x < TILE - 1; x++) {
       pc.set(x, 4 + (frame ? 1 : 0), PAL.water1);
       pc.set(x, 11 + (frame ? 0 : 1), PAL.water3);
     }
