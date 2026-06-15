@@ -1,5 +1,7 @@
 import { Player } from '../entities/Player.js';
 import { Enemy } from '../entities/Enemy.js';
+import { XpGem } from '../entities/XpGem.js';
+import { VacuumItem } from '../entities/VacuumItem.js';
 import { WorldMap } from '../world/WorldMap.js';
 import { WorldRenderer } from '../world/WorldRenderer.js';
 import { RunState, getSpawnIntervalForTime } from '../services/RunState.js';
@@ -7,6 +9,12 @@ import { PAL } from '../utils/SnesPalettes.js';
 import { SnesUI } from '../utils/SnesUI.js';
 import { SceneTransition } from '../utils/SceneTransition.js';
 import { AssetService } from '../services/AssetService.js';
+import { UpgradePicker } from '../ui/UpgradePicker.js';
+import {
+  applyUpgrade,
+  pickRandomUpgrades,
+  getPickupRadius,
+} from '../config/UpgradeRegistry.js';
 import {
   PLAYER as PLAYER_CFG,
   WAVES,
@@ -14,6 +22,7 @@ import {
   WORLD,
   GAME,
   COMBAT,
+  XP,
   FONTS,
 } from '../config/GameConfig.js';
 import {
@@ -36,6 +45,8 @@ export class GameScene extends Phaser.Scene {
       this.runState = new RunState();
       this.spawnTimer = 0;
       this.gameOver = false;
+      this.levelUpActive = false;
+      this.upgradePicker = null;
 
       this.cameras.main.setBackgroundColor(PAL.grassDark);
 
@@ -59,6 +70,7 @@ export class GameScene extends Phaser.Scene {
     if (this.escHandler) {
       this.input.keyboard.off('keydown-ESC', this.escHandler);
     }
+    this.upgradePicker?.destroy();
     this.worldRenderer?.destroy();
   }
 
@@ -90,6 +102,8 @@ export class GameScene extends Phaser.Scene {
 
     this.enemies = this.physics.add.group();
     this.projectiles = this.physics.add.group();
+    this.xpGems = this.physics.add.group();
+    this.vacuumItems = this.physics.add.group();
 
     this.cameras.main.startFollow(this.player.sprite, true, WORLD.CAMERA_LERP, WORLD.CAMERA_LERP);
     this.cameras.main.setDeadzone(80, 60);
@@ -100,7 +114,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   createUI(width, _height) {
-    SnesUI.drawWindow(this, 8, 8, width - 16, 36, 100);
+    SnesUI.drawWindow(this, 8, 8, width - 16, 52, 100);
 
     this.hearts = [];
     for (let i = 0; i < 10; i++) {
@@ -113,8 +127,8 @@ export class GameScene extends Phaser.Scene {
       size: '16px', color: PAL.uiGold, depth: 101,
     }).setOrigin(0.5, 0);
 
-    SnesUI.snesText(this, width / 2, 32, 'ELDERGROVE', {
-      size: '9px', color: PAL.uiTextDim, depth: 101,
+    this.levelText = SnesUI.snesText(this, width / 2, 32, 'LV 1', {
+      size: '10px', color: PAL.uiTextDim, depth: 101,
     }).setOrigin(0.5, 0);
 
     this.scoreText = SnesUI.snesText(this, width - 24, 18, 'SCORE 0000', {
@@ -124,6 +138,35 @@ export class GameScene extends Phaser.Scene {
     this.killsText = SnesUI.snesText(this, width - 24, 34, 'KILLS 0', {
       size: '10px', color: PAL.uiTextDim, depth: 101,
     }).setOrigin(1, 0);
+
+    const barX = 20;
+    const barY = 48;
+    const barW = width - 40;
+    this.xpBarBg = this.add.graphics().setDepth(101).setScrollFactor(0);
+    this.xpBarFill = this.add.graphics().setDepth(102).setScrollFactor(0);
+    this.xpBarBounds = { x: barX, y: barY, w: barW, h: 6 };
+    this.drawXpBar();
+  }
+
+  drawXpBar() {
+    const { x, y, w, h } = this.xpBarBounds;
+    const rs = this.runState;
+    const ratio = rs.xpToNext > 0 ? Phaser.Math.Clamp(rs.xp / rs.xpToNext, 0, 1) : 0;
+
+    this.xpBarBg.clear();
+    this.xpBarBg.fillStyle(parseInt(PAL.uiShadow.slice(1), 16));
+    this.xpBarBg.fillRect(x, y, w, h);
+
+    this.xpBarFill.clear();
+    if (ratio > 0) {
+      this.xpBarFill.fillStyle(parseInt(PAL.slime1.slice(1), 16));
+      this.xpBarFill.fillRect(x, y, Math.max(2, w * ratio), h);
+    }
+  }
+
+  updateXpHud() {
+    this.levelText.setText(`LV ${this.runState.level}`);
+    this.drawXpBar();
   }
 
   setupInput() {
@@ -135,13 +178,16 @@ export class GameScene extends Phaser.Scene {
       D: this.input.keyboard.addKey('D'),
     };
 
-    this.escHandler = () => SceneTransition.toMenu(this);
+    this.escHandler = () => {
+      if (this.levelUpActive || this.gameOver) return;
+      SceneTransition.toMenu(this);
+    };
     this.input.keyboard.on('keydown-ESC', this.escHandler);
   }
 
   setupCollisions() {
     this.physics.add.overlap(this.player.sprite, this.enemies, (_p, enemySprite) => {
-      if (!enemySprite.active || this.player.invincible) return;
+      if (!enemySprite.active || this.player.invincible || this.levelUpActive) return;
       const cfg = enemySprite.enemyRef?.config;
       if (cfg) {
         this.player.takeDamage(cfg.damage);
@@ -153,7 +199,106 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  /** Reliable projectile hits — distance + segment sweep (no tunneling). */
+  spawnLoot(x, y, config) {
+    XpGem.spawn(this, x, y, config.xp ?? 10);
+
+    if (Math.random() < XP.VACUUM_DROP_CHANCE) {
+      VacuumItem.spawn(this, x + Phaser.Math.Between(-8, 8), y + Phaser.Math.Between(-8, 8));
+    }
+  }
+
+  collectXpGem(gem) {
+    if (!gem?.active) return;
+    const value = gem.xpValue ?? 1;
+    gem.destroy();
+    this.runState.addXp(value);
+    this.updateXpHud();
+
+    if (this.runState.pendingLevelUps > 0) {
+      this.showLevelUpPicker();
+    }
+  }
+
+  checkXpPickup() {
+    const px = this.player.sprite.x;
+    const py = this.player.sprite.y;
+    const radius = getPickupRadius(this.player);
+
+    for (const gem of this.xpGems.getChildren()) {
+      if (!gem.active) continue;
+      const dist = Phaser.Math.Distance.Between(px, py, gem.x, gem.y);
+      if (dist <= radius) {
+        this.collectXpGem(gem);
+      }
+    }
+  }
+
+  checkVacuumPickup() {
+    const px = this.player.sprite.x;
+    const py = this.player.sprite.y;
+
+    for (const item of this.vacuumItems.getChildren()) {
+      if (!item.active) continue;
+      const dist = Phaser.Math.Distance.Between(px, py, item.x, item.y);
+      if (dist <= 24) {
+        VacuumItem.activate(this, item, px, py);
+      }
+    }
+  }
+
+  spawnVacuumVfx(x, y) {
+    const ring = this.add.circle(x, y, 8, 0xf878a8, 0.5).setDepth(20);
+    this.tweens.add({
+      targets: ring,
+      scaleX: 8,
+      scaleY: 8,
+      alpha: 0,
+      duration: 400,
+      ease: 'Cubic.easeOut',
+      onComplete: () => ring.destroy(),
+    });
+  }
+
+  showLevelUpPicker() {
+    if (this.levelUpActive) return;
+
+    this.levelUpActive = true;
+    this.runState.isPaused = true;
+    this.physics.pause();
+
+    const choices = pickRandomUpgrades(this.player, this.runState, 3);
+    if (choices.length === 0) {
+      this.runState.pendingLevelUps = 0;
+      this.finishLevelUp();
+      return;
+    }
+
+    const upgradeIds = choices.map((c) => c.id);
+    this.upgradePicker = new UpgradePicker(this, upgradeIds, (upgradeId) => {
+      this.runState.recordUpgrade(upgradeId);
+      applyUpgrade(this.player, upgradeId);
+      this.updateXpHud();
+      this.updateHearts();
+      this.finishLevelUp();
+    });
+  }
+
+  finishLevelUp() {
+    this.upgradePicker?.destroy();
+    this.upgradePicker = null;
+
+    if (this.runState.pendingLevelUps > 0) {
+      this.showLevelUpPicker();
+      return;
+    }
+
+    this.levelUpActive = false;
+    this.runState.isPaused = false;
+    if (!this.gameOver) {
+      this.physics.resume();
+    }
+  }
+
   checkProjectileHits() {
     const enemies = this.enemies.getChildren();
 
@@ -169,12 +314,20 @@ export class GameScene extends Phaser.Scene {
         if (!enemySprite.active) continue;
         const ref = enemySprite.enemyRef;
         if (!ref || ref.state === 'dead') continue;
+        if (proj.hitIds?.has(enemySprite)) continue;
 
         if (segmentHitsCircle(prevX, prevY, px, py, enemySprite.x, enemySprite.y, HIT_TEST.ENEMY_RADIUS)) {
           const dmg = proj.damage ?? PLAYER_CFG.PROJECTILE_DAMAGE;
-          proj.destroy();
+          if (!proj.hitIds) proj.hitIds = new Set();
+          proj.hitIds.add(enemySprite);
           ref.takeDamage(dmg, px, py);
-          break;
+
+          const pierceLeft = proj.pierceRemaining ?? 0;
+          if (pierceLeft <= 0) {
+            proj.destroy();
+            break;
+          }
+          proj.pierceRemaining = pierceLeft - 1;
         }
       }
 
@@ -185,10 +338,31 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  fireProjectile(x, y, dirX, dirY) {
+  checkOrbitBladeHits(blades) {
+    const enemies = this.enemies.getChildren();
+    const hitRadius = 18;
+
+    for (const blade of blades) {
+      for (const enemySprite of enemies) {
+        if (!enemySprite.active) continue;
+        const ref = enemySprite.enemyRef;
+        if (!ref || ref.state === 'dead') continue;
+
+        const dist = Phaser.Math.Distance.Between(
+          blade.x, blade.y, enemySprite.x, enemySprite.y
+        );
+        if (dist <= hitRadius) {
+          ref.takeDamage(XP.ORBIT_DAMAGE, blade.x, blade.y);
+        }
+      }
+    }
+  }
+
+  fireProjectile(x, y, dirX, dirY, opts = {}) {
     const proj = this.projectiles.create(x, y, 'projectile');
     proj.setDepth(12).setScale(GAME.SPRITE_SCALE);
-    proj.damage = PLAYER_CFG.PROJECTILE_DAMAGE;
+    proj.damage = opts.damage ?? PLAYER_CFG.PROJECTILE_DAMAGE;
+    proj.pierceRemaining = opts.pierce ?? 0;
     proj.prevX = x;
     proj.prevY = y;
     proj.body.setVelocity(dirX * 280, dirY * 280);
@@ -197,7 +371,6 @@ export class GameScene extends Phaser.Scene {
     this.time.delayedCall(1800, () => { if (proj.active) proj.destroy(); });
   }
 
-  /** Phase 4 — hit feedback: particles, damage number, micro shake. */
   onEnemyHit(x, y, damage, color) {
     this.cameras.main.shake(COMBAT.HIT_SHAKE_MS, COMBAT.HIT_SHAKE_INTENSITY);
     this.spawnHitParticles(x, y, color);
@@ -259,9 +432,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   updateHearts() {
+    const maxHearts = Math.ceil(this.player.maxHealth / 10);
     const filled = Math.ceil(this.player.health / 10);
     for (let i = 0; i < this.hearts.length; i++) {
-      this.hearts[i].setTexture(i < filled ? 'heart' : 'heart_empty');
+      if (i >= maxHearts) {
+        this.hearts[i].setVisible(false);
+      } else {
+        this.hearts[i].setVisible(true);
+        this.hearts[i].setTexture(i < filled ? 'heart' : 'heart_empty');
+      }
     }
   }
 
@@ -272,50 +451,59 @@ export class GameScene extends Phaser.Scene {
   handleGameOver() {
     if (this.gameOver) return;
     this.gameOver = true;
+    this.levelUpActive = false;
+    this.upgradePicker?.destroy();
     this.runState.endDefeat();
     this.physics.pause();
 
     const { width, height } = this.scale;
     const rs = this.runState;
 
-    SnesUI.drawWindow(this, width / 2 - 170, height / 2 - 95, 340, 190, 200);
+    SnesUI.drawWindow(this, width / 2 - 170, height / 2 - 110, 340, 220, 200);
 
-    SnesUI.snesText(this, width / 2, height / 2 - 70, 'YOU DIED', {
+    SnesUI.snesText(this, width / 2, height / 2 - 85, 'YOU DIED', {
       size: '24px', color: PAL.boneEye, depth: 201,
     }).setOrigin(0.5);
 
-    SnesUI.snesText(this, width / 2, height / 2 - 35, `TIME  ${rs.getFormattedTime()}`, {
+    SnesUI.snesText(this, width / 2, height / 2 - 52, `TIME  ${rs.getFormattedTime()}`, {
       size: '14px', color: PAL.uiGold, depth: 201,
     }).setOrigin(0.5);
 
-    SnesUI.snesText(this, width / 2, height / 2 - 10, `SCORE ${String(rs.score).padStart(4, '0')}`, {
+    SnesUI.snesText(this, width / 2, height / 2 - 28, `LEVEL ${rs.level}`, {
       size: '14px', depth: 201,
     }).setOrigin(0.5);
 
-    SnesUI.snesText(this, width / 2, height / 2 + 15, `KILLS ${rs.kills}`, {
+    SnesUI.snesText(this, width / 2, height / 2 - 4, `SCORE ${String(rs.score).padStart(4, '0')}`, {
       size: '14px', depth: 201,
     }).setOrigin(0.5);
 
-    const retry = SnesUI.snesText(this, width / 2, height / 2 + 50, '▶ Press R to Retry', {
+    SnesUI.snesText(this, width / 2, height / 2 + 20, `KILLS ${rs.kills}`, {
+      size: '14px', depth: 201,
+    }).setOrigin(0.5);
+
+    const retry = SnesUI.snesText(this, width / 2, height / 2 + 55, '▶ Press R to Retry', {
       size: '14px', color: PAL.uiGold, depth: 201,
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
     retry.on('pointerdown', () => this.scene.restart());
     this.input.keyboard.once('keydown-R', () => this.scene.restart());
 
-    SnesUI.snesText(this, width / 2, height / 2 + 75, 'ESC — Main Menu', {
+    SnesUI.snesText(this, width / 2, height / 2 + 80, 'ESC — Main Menu', {
       size: '12px', color: PAL.uiTextDim, depth: 201,
     }).setOrigin(0.5);
   }
 
   update(time, delta) {
     if (this.gameOver || !this.player?.sprite?.active) return;
+    if (this.levelUpActive) return;
 
     this.runState.update(delta);
     this.updateTimerHud();
 
     this.player.update(time, this.cursors, this.wasd);
     this.updateHearts();
+    this.checkXpPickup();
+    this.checkVacuumPickup();
 
     for (const enemySprite of this.enemies.getChildren()) {
       if (enemySprite.active && enemySprite.enemyRef) {

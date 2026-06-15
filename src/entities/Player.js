@@ -1,6 +1,11 @@
 import { PAL, SPRITE_SCALE } from '../utils/SnesPalettes.js';
-import { PLAYER as PLAYER_CFG } from '../config/GameConfig.js';
+import { PLAYER as PLAYER_CFG, XP } from '../config/GameConfig.js';
 import { Hitboxes } from '../utils/Hitboxes.js';
+import {
+  getProjectileCount,
+  getProjectileDamage,
+  getPierceCount,
+} from '../config/UpgradeRegistry.js';
 
 export class Player {
   constructor(scene, x, y) {
@@ -22,6 +27,10 @@ export class Player {
     this.lastAttack = 0;
     this.facing = 'down';
 
+    this.orbitBlades = [];
+    this.orbitAngle = 0;
+    this.lastOrbitTick = 0;
+
     this.shadow = scene.add.image(x, y + 14, 'shadow').setDepth(5).setScale(SPRITE_SCALE);
     this.shadow.setAlpha(0.7);
   }
@@ -42,6 +51,42 @@ export class Player {
           repeat: -1,
         });
       }
+    }
+  }
+
+  ensureOrbitBlades(count) {
+    while (this.orbitBlades.length < count) {
+      const blade = this.scene.add.image(0, 0, 'projectile')
+        .setScale(SPRITE_SCALE * 0.9)
+        .setDepth(11)
+        .setTint(0xa0d0ff);
+      this.orbitBlades.push(blade);
+    }
+    while (this.orbitBlades.length > count) {
+      this.orbitBlades.pop()?.destroy();
+    }
+  }
+
+  updateOrbitBlades(time) {
+    const count = this.orbitBlades.length;
+    if (count === 0) return;
+
+    this.orbitAngle += 0.04;
+    const radius = XP.ORBIT_RADIUS;
+
+    for (let i = 0; i < count; i++) {
+      const angle = this.orbitAngle + (i / count) * Math.PI * 2;
+      const blade = this.orbitBlades[i];
+      blade.setPosition(
+        this.sprite.x + Math.cos(angle) * radius,
+        this.sprite.y + Math.sin(angle) * radius
+      );
+      blade.setDepth(8 + this.sprite.y * 0.001 + 0.5);
+    }
+
+    if (time - this.lastOrbitTick >= XP.ORBIT_TICK_MS) {
+      this.lastOrbitTick = time;
+      this.scene.checkOrbitBladeHits(this.orbitBlades);
     }
   }
 
@@ -78,6 +123,8 @@ export class Player {
     this.shadow.setPosition(this.sprite.x, this.sprite.y + 14);
     this.sprite.setDepth(8 + this.sprite.y * 0.001);
 
+    this.updateOrbitBlades(time);
+
     if (time - this.lastAttack >= this.attackCooldown) {
       const target = this.findNearestEnemy();
       if (target) this.attack(target, time);
@@ -105,15 +152,26 @@ export class Player {
   attack(target, time) {
     this.lastAttack = time;
 
-    const angle = Phaser.Math.Angle.Between(
+    const baseAngle = Phaser.Math.Angle.Between(
       this.sprite.x, this.sprite.y, target.x, target.y
     );
-    this.scene.fireProjectile(
-      this.sprite.x,
-      this.sprite.y - 4,
-      Math.cos(angle),
-      Math.sin(angle)
-    );
+    const count = getProjectileCount(this);
+    const spread = count > 1 ? 0.35 : 0;
+
+    for (let i = 0; i < count; i++) {
+      const t = count === 1 ? 0 : (i / (count - 1) - 0.5) * spread;
+      const angle = baseAngle + t;
+      this.scene.fireProjectile(
+        this.sprite.x,
+        this.sprite.y - 4,
+        Math.cos(angle),
+        Math.sin(angle),
+        {
+          damage: getProjectileDamage(this),
+          pierce: getPierceCount(this),
+        }
+      );
+    }
 
     this.sprite.setTint(0xffffff);
     this.scene.time.delayedCall(60, () => {
@@ -138,6 +196,8 @@ export class Player {
   }
 
   destroy() {
+    for (const b of this.orbitBlades) b.destroy();
+    this.orbitBlades = [];
     this.shadow?.destroy();
     this.sprite?.destroy();
   }

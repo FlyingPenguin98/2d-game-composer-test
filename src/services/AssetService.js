@@ -26,6 +26,7 @@ export class AssetService {
     const required = [
       'tileset', 'player', 'enemy_slime', 'enemy_skeleton', 'enemy_bat',
       'projectile', 'particle', 'shadow', 'heart', 'heart_empty',
+      'xp_gem', 'vacuum_item',
     ];
     const missing = required.filter((k) => !game.textures.exists(k));
     if (missing.length > 0) {

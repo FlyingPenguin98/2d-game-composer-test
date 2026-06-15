@@ -14,6 +14,7 @@ const ENEMY_TYPES = {
     speed: 45,
     damage: 10,
     score: 10,
+    xp: 10,
     scale: SPRITE_SCALE,
     animKey: 'slime_bounce',
     hitFrame: 2,
@@ -25,6 +26,7 @@ const ENEMY_TYPES = {
     speed: 65,
     damage: 15,
     score: 25,
+    xp: 18,
     scale: SPRITE_SCALE,
     animKey: null,
     hitFrame: 1,
@@ -37,6 +39,7 @@ const ENEMY_TYPES = {
     speed: 90,
     damage: 8,
     score: 15,
+    xp: 12,
     scale: SPRITE_SCALE,
     animKey: 'bat_flap',
     hitFrame: 2,
@@ -155,9 +158,11 @@ export class Enemy {
 
   die() {
     this.state = 'dead';
+    const { x, y } = this.sprite;
     this.scene.cameras.main.shake(COMBAT.HIT_SHAKE_MS, COMBAT.HIT_SHAKE_INTENSITY * 2);
-    this.scene.spawnDeathParticles(this.sprite.x, this.sprite.y, this.config.hitColor);
+    this.scene.spawnDeathParticles(x, y, this.config.hitColor);
     this.scene.addScore(this.config.score);
+    this.scene.spawnLoot(x, y, this.config);
     this.destroy();
   }
 
