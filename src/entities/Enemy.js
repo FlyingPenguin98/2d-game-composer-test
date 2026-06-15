@@ -1,5 +1,10 @@
 import { SPRITE_SCALE } from '../utils/SnesPalettes.js';
-import { WORLD } from '../config/GameConfig.js';
+import { WORLD, COMBAT } from '../config/GameConfig.js';
+
+const ENEMY_STATE = {
+  CHASE: 'chase',
+  HIT: 'hit',
+};
 
 const ENEMY_TYPES = {
   slime: {
@@ -10,6 +15,7 @@ const ENEMY_TYPES = {
     score: 10,
     scale: SPRITE_SCALE,
     animKey: 'slime_bounce',
+    hitFrame: 2,
     hitColor: 0x5090f8,
   },
   skeleton: {
@@ -20,6 +26,8 @@ const ENEMY_TYPES = {
     score: 25,
     scale: SPRITE_SCALE,
     animKey: null,
+    hitFrame: 1,
+    idleFrame: 0,
     hitColor: 0xf8f0d8,
   },
   bat: {
@@ -30,6 +38,7 @@ const ENEMY_TYPES = {
     score: 15,
     scale: SPRITE_SCALE,
     animKey: 'bat_flap',
+    hitFrame: 2,
     hitColor: 0x7868a8,
   },
 };
@@ -39,6 +48,10 @@ export class Enemy {
     this.scene = scene;
     this.typeKey = typeKey;
     this.config = ENEMY_TYPES[typeKey];
+    this.state = ENEMY_STATE.CHASE;
+    this.stunUntil = 0;
+    this.knockbackVx = 0;
+    this.knockbackVy = 0;
 
     this.sprite = scene.physics.add.sprite(x, y, this.config.texture, 0);
     this.sprite.setScale(this.config.scale);
@@ -55,9 +68,7 @@ export class Enemy {
     this.shadow = scene.add.image(x, y + 12, 'shadow').setDepth(4).setScale(SPRITE_SCALE * 0.8);
     this.shadow.setAlpha(0.6);
 
-    if (this.config.animKey && scene.anims.exists(this.config.animKey)) {
-      this.sprite.anims.play(this.config.animKey);
-    }
+    this.playIdleAnim();
   }
 
   static registerAnims(scene) {
@@ -79,8 +90,37 @@ export class Enemy {
     }
   }
 
-  update(_time, playerX, playerY) {
+  playIdleAnim() {
+    if (this.config.animKey && this.scene.anims.exists(this.config.animKey)) {
+      this.sprite.anims.play(this.config.animKey, true);
+    } else if (this.config.idleFrame !== undefined) {
+      this.sprite.setFrame(this.config.idleFrame);
+    }
+  }
+
+  showHitFrame() {
+    this.sprite.anims.stop();
+    this.sprite.setFrame(this.config.hitFrame);
+    this.sprite.setTint(0xffffff);
+  }
+
+  update(time, playerX, playerY) {
     if (!this.sprite.active) return;
+
+    this.shadow.setPosition(this.sprite.x, this.sprite.y + 12);
+    this.sprite.setDepth(8 + this.sprite.y * 0.001);
+
+    if (this.state === ENEMY_STATE.HIT) {
+      if (time < this.stunUntil) {
+        this.sprite.setVelocity(this.knockbackVx, this.knockbackVy);
+        this.knockbackVx *= COMBAT.KNOCKBACK_DECAY;
+        this.knockbackVy *= COMBAT.KNOCKBACK_DECAY;
+        return;
+      }
+      this.sprite.clearTint();
+      this.state = ENEMY_STATE.CHASE;
+      this.playIdleAnim();
+    }
 
     const angle = Phaser.Math.Angle.Between(
       this.sprite.x, this.sprite.y, playerX, playerY
@@ -92,25 +132,30 @@ export class Enemy {
 
     if (Math.cos(angle) < 0) this.sprite.setFlipX(true);
     else if (Math.cos(angle) > 0) this.sprite.setFlipX(false);
-
-    this.shadow.setPosition(this.sprite.x, this.sprite.y + 12);
-    this.sprite.setDepth(8 + this.sprite.y * 0.001);
   }
 
-  takeDamage(amount) {
+  takeDamage(amount, fromX, fromY) {
+    if (!this.sprite.active || this.state === 'dead') return;
+
     this.health -= amount;
 
-    this.sprite.setTint(0xffffff);
-    this.scene.time.delayedCall(50, () => {
-      if (this.sprite.active) this.sprite.clearTint();
-    });
+    const angle = Phaser.Math.Angle.Between(fromX, fromY, this.sprite.x, this.sprite.y);
+    this.knockbackVx = Math.cos(angle) * COMBAT.KNOCKBACK_FORCE;
+    this.knockbackVy = Math.sin(angle) * COMBAT.KNOCKBACK_FORCE;
+    this.state = ENEMY_STATE.HIT;
+    this.stunUntil = this.scene.time.now + COMBAT.HIT_STUN_MS;
 
-    this.scene.spawnHitParticles(this.sprite.x, this.sprite.y, this.config.hitColor);
+    this.showHitFrame();
+    this.scene.onEnemyHit(this.sprite.x, this.sprite.y, amount, this.config.hitColor);
 
-    if (this.health <= 0) this.die();
+    if (this.health <= 0) {
+      this.die();
+    }
   }
 
   die() {
+    this.state = 'dead';
+    this.scene.cameras.main.shake(COMBAT.HIT_SHAKE_MS, COMBAT.HIT_SHAKE_INTENSITY * 2);
     this.scene.spawnDeathParticles(this.sprite.x, this.sprite.y, this.config.hitColor);
     this.scene.addScore(this.config.score);
     this.destroy();
@@ -133,9 +178,6 @@ export class Enemy {
     return 'slime';
   }
 
-  /**
-   * Spawn outside the camera view but inside world bounds (Phase 1).
-   */
   static spawnOutsideCamera(scene) {
     const worldMap = scene.worldMap;
     if (!worldMap) {
@@ -184,11 +226,9 @@ export class Enemy {
       }
     }
 
-    // Fallback: spawn at world edge away from player
     return Enemy.spawnAtEdgeLegacy(scene);
   }
 
-  /** Legacy screen-edge spawn (fallback). */
   static spawnAtEdgeLegacy(scene) {
     const margin = 40;
     const cam = scene.cameras.main;
@@ -219,7 +259,6 @@ export class Enemy {
     return enemy;
   }
 
-  /** @deprecated Use spawnOutsideCamera */
   static spawnAtEdge(scene) {
     return Enemy.spawnOutsideCamera(scene);
   }

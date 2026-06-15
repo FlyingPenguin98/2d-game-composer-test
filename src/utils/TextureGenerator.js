@@ -26,8 +26,9 @@ export class TextureGenerator {
     const tex = textures.textures ?? textures;
     const sheets = [
       { key: 'player', fw: 16, fh: 16, count: 8 },
-      { key: 'enemy_slime', fw: 16, fh: 16, count: 2 },
-      { key: 'enemy_bat', fw: 16, fh: 16, count: 2 },
+      { key: 'enemy_slime', fw: 16, fh: 16, count: 3 },
+      { key: 'enemy_bat', fw: 16, fh: 16, count: 3 },
+      { key: 'enemy_skeleton', fw: 16, fh: 16, count: 2 },
     ];
     for (const { key, fw, fh, count } of sheets) {
       const sheet = tex.get(key);
@@ -340,19 +341,18 @@ export class TextureGenerator {
 
   static generateSlime() {
     const fw = 16;
-    const frames = 2;
+    const frames = 3;
     const canvas = document.createElement('canvas');
     canvas.width = fw * frames;
     canvas.height = 16;
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
 
-    for (let f = 0; f < frames; f++) {
+    for (let f = 0; f < 2; f++) {
       const pc = new PixelCanvas(16, 16, 1);
       const squash = f === 1 ? 1 : 0;
       const yOff = squash ? 1 : 0;
 
-      // DQ-style slime dome
       for (let y = 6 + yOff; y < 14; y++) {
         const prog = (y - 6) / 8;
         const halfW = Math.floor(2 + prog * 5);
@@ -361,73 +361,103 @@ export class TextureGenerator {
           pc.set(x, y, c);
         }
       }
-      // Highlight
       pc.set(6, 8 + yOff, PAL.slimeHi);
       pc.set(7, 7 + yOff, PAL.slimeHi);
-      // Eyes
       pc.set(6, 10 + yOff, PAL.black);
       pc.set(9, 10 + yOff, PAL.black);
       pc.set(6, 11 + yOff, PAL.white);
       pc.set(9, 11 + yOff, PAL.white);
-
       pc.outline();
       ctx.drawImage(pc.flush(), f * fw, 0);
     }
 
-    this.addCanvas( 'enemy_slime', canvas);
+    // Hit frame — flattened with X eyes
+    const hit = new PixelCanvas(16, 16, 1);
+    for (let y = 10; y < 14; y++) {
+      const halfW = 6;
+      for (let x = 8 - halfW; x <= 8 + halfW; x++) {
+        hit.set(x, y, y < 12 ? PAL.slime1 : PAL.slime3);
+      }
+    }
+    hit.set(6, 10, PAL.slimeHi);
+    hit.set(5, 11, PAL.boneEye);
+    hit.set(7, 11, PAL.boneEye);
+    hit.set(9, 11, PAL.boneEye);
+    hit.set(11, 11, PAL.boneEye);
+    hit.outline();
+    ctx.drawImage(hit.flush(), 2 * fw, 0);
+
+    this.addCanvas('enemy_slime', canvas);
   }
 
   static generateSkeleton() {
-    const pc = new PixelCanvas(16, 16, 1);
+    const fw = 16;
+    const canvas = document.createElement('canvas');
+    canvas.width = fw * 2;
+    canvas.height = 16;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
 
-    // Skull
-    pc.rect(5, 2, 6, 5, PAL.bone1);
-    pc.rect(6, 3, 4, 3, PAL.bone2);
-    pc.set(6, 4, PAL.boneEye);
-    pc.set(9, 4, PAL.boneEye);
-    pc.set(7, 6, PAL.bone3);
-    pc.set(8, 6, PAL.bone3);
-    // Jaw
-    pc.set(6, 7, PAL.bone2);
-    pc.set(9, 7, PAL.bone2);
+    const drawIdle = () => {
+      const pc = new PixelCanvas(16, 16, 1);
+      pc.rect(5, 2, 6, 5, PAL.bone1);
+      pc.rect(6, 3, 4, 3, PAL.bone2);
+      pc.set(6, 4, PAL.boneEye);
+      pc.set(9, 4, PAL.boneEye);
+      pc.set(7, 6, PAL.bone3);
+      pc.set(8, 6, PAL.bone3);
+      pc.set(6, 7, PAL.bone2);
+      pc.set(9, 7, PAL.bone2);
+      pc.rect(7, 7, 2, 6, PAL.bone2);
+      for (let y = 8; y < 12; y += 2) {
+        pc.set(5, y, PAL.bone1);
+        pc.set(10, y, PAL.bone1);
+      }
+      pc.set(4, 9, PAL.bone2);
+      pc.set(3, 9, PAL.bone1);
+      pc.set(11, 9, PAL.bone2);
+      pc.set(12, 9, PAL.bone1);
+      pc.set(6, 13, PAL.bone2);
+      pc.set(7, 14, PAL.bone1);
+      pc.set(8, 14, PAL.bone1);
+      pc.set(9, 13, PAL.bone2);
+      pc.outline();
+      return pc.flush();
+    };
 
-    // Spine & ribs
-    pc.rect(7, 7, 2, 6, PAL.bone2);
-    for (let y = 8; y < 12; y += 2) {
-      pc.set(5, y, PAL.bone1);
-      pc.set(10, y, PAL.bone1);
-    }
+    const drawHit = () => {
+      const pc = new PixelCanvas(16, 16, 1);
+      // Recoil — skull tilted, body compressed
+      pc.rect(6, 3, 6, 5, PAL.bone1);
+      pc.set(8, 5, PAL.boneEye);
+      pc.set(11, 5, PAL.boneEye);
+      pc.rect(7, 8, 2, 5, PAL.bone2);
+      pc.set(4, 10, PAL.bone1);
+      pc.set(12, 10, PAL.bone1);
+      pc.set(6, 14, PAL.bone2);
+      pc.set(9, 14, PAL.bone2);
+      pc.outline();
+      return pc.flush();
+    };
 
-    // Arms
-    pc.set(4, 9, PAL.bone2);
-    pc.set(3, 9, PAL.bone1);
-    pc.set(11, 9, PAL.bone2);
-    pc.set(12, 9, PAL.bone1);
-
-    // Legs
-    pc.set(6, 13, PAL.bone2);
-    pc.set(7, 14, PAL.bone1);
-    pc.set(8, 14, PAL.bone1);
-    pc.set(9, 13, PAL.bone2);
-
-    pc.outline();
-    this.addCanvas( 'enemy_skeleton', pc.flush());
+    ctx.drawImage(drawIdle(), 0, 0);
+    ctx.drawImage(drawHit(), fw, 0);
+    this.addCanvas('enemy_skeleton', canvas);
   }
 
   static generateBat() {
     const fw = 16;
-    const frames = 2;
+    const frames = 3;
     const canvas = document.createElement('canvas');
     canvas.width = fw * frames;
     canvas.height = 16;
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
 
-    for (let f = 0; f < frames; f++) {
+    for (let f = 0; f < 2; f++) {
       const pc = new PixelCanvas(16, 16, 1);
       const wingUp = f === 0;
 
-      // Wings
       if (wingUp) {
         pc.set(2, 6, PAL.batWing);
         pc.set(3, 5, PAL.bat2);
@@ -444,21 +474,30 @@ export class TextureGenerator {
         pc.set(10, 10, PAL.batWing);
       }
 
-      // Body
       pc.rect(6, 6, 4, 5, PAL.bat2);
       pc.rect(7, 7, 2, 3, PAL.bat1);
-      // Ears
       pc.set(6, 5, PAL.bat3);
       pc.set(9, 5, PAL.bat3);
-      // Eyes
       pc.set(7, 7, PAL.batEye);
       pc.set(8, 7, PAL.batEye);
-
       pc.outline();
       ctx.drawImage(pc.flush(), f * fw, 0);
     }
 
-    this.addCanvas( 'enemy_bat', canvas);
+    // Hit frame — wings splayed, body bright
+    const hit = new PixelCanvas(16, 16, 1);
+    hit.set(1, 7, PAL.batWing);
+    hit.set(2, 6, PAL.bat2);
+    hit.set(13, 7, PAL.batWing);
+    hit.set(12, 6, PAL.bat2);
+    hit.rect(6, 6, 4, 5, PAL.white);
+    hit.rect(7, 7, 2, 3, PAL.bat1);
+    hit.set(7, 7, PAL.batEye);
+    hit.set(8, 7, PAL.batEye);
+    hit.outline();
+    ctx.drawImage(hit.flush(), 2 * fw, 0);
+
+    this.addCanvas('enemy_bat', canvas);
   }
 
   // ── Projectiles & FX ──────────────────────────────────────────────

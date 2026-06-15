@@ -46,6 +46,14 @@ export const WAVES = {
   INITIAL_ENEMIES: 3,
 };
 
+export const COMBAT = {
+  HIT_STUN_MS: 110,
+  KNOCKBACK_FORCE: 150,
+  KNOCKBACK_DECAY: 0.8,
+  HIT_SHAKE_MS: 50,
+  HIT_SHAKE_INTENSITY: 0.003,
+};
+
 export const TEXTURES = {
   TILESET: 'tileset',
   PLAYER: 'player',

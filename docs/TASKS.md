@@ -63,11 +63,11 @@ Small, isolated feature — good first VS mechanic.
 
 | ID | Task | Priority | Deps | Acceptance criteria |
 |----|------|----------|------|---------------------|
-| T-01 | Create `RunState` service (elapsed ms, start/stop/reset) | P0 | W-05 | Single source of truth per run |
-| T-02 | HUD timer display `MM:SS` (updates every frame or 100ms) | P0 | T-01 | Visible during gameplay |
-| T-03 | Reset timer on new run / scene restart | P0 | T-01 | Always starts 0:00 |
-| T-04 | Show timer on game over summary | P0 | T-01 | Persists final value after death |
-| T-05 | Feed timer into spawn difficulty (see Phase 5) | P1 | T-01, S-01 | Difficulty uses time, not only kills |
+| T-01 | Create `RunState` service (elapsed ms, start/stop/reset) | P0 | W-05 | [x] |
+| T-02 | HUD timer display `MM:SS` (updates every frame or 100ms) | P0 | T-01 | [x] |
+| T-03 | Reset timer on new run / scene restart | P0 | T-01 | [x] |
+| T-04 | Show timer on game over summary | P0 | T-01 | [x] |
+| T-05 | Feed timer into spawn difficulty (see Phase 5) | P1 | T-01, S-01 | [x] |
 
 **Phase 3 gate:** Timer accurate, visible, survives until game over.
 
@@ -79,13 +79,13 @@ Address user feedback before or in parallel with Phase 5.
 
 | ID | Task | Priority | Deps | Acceptance criteria |
 |----|------|----------|------|---------------------|
-| C-01 | Add enemy hit state machine: `idle → hit → idle` or `dead` | P0 | — | State blocks normal AI during hit |
-| C-02 | Enemy hit animation frames (recoil/squash) in `TextureGenerator` | P0 | C-01 | Visible frame change, not just tint |
-| C-03 | Knockback impulse away from projectile direction | P0 | C-01 | Enemy visibly pushed |
-| C-04 | Hit-stun duration (~100ms) — zero velocity during stun | P0 | C-01 | Enemy pauses briefly |
-| C-05 | Stronger hit particles + optional damage number popup | P1 | C-01 | Impact readable at glance |
-| C-06 | Micro hit-stop on kill (1 frame, configurable) | P2 | C-01 | Subtle VS-style punch |
-| C-07 | Camera shake on kill (small amplitude) | P2 | C-01 | Optional, not nauseating |
+| C-01 | Add enemy hit state machine: `idle → hit → idle` or `dead` | P0 | — | [x] |
+| C-02 | Enemy hit animation frames (recoil/squash) in `TextureGenerator` | P0 | C-01 | [x] |
+| C-03 | Knockback impulse away from projectile direction | P0 | C-01 | [x] |
+| C-04 | Hit-stun duration (~100ms) — zero velocity during stun | P0 | C-01 | [x] |
+| C-05 | Stronger hit particles + optional damage number popup | P1 | C-01 | [x] |
+| C-06 | Micro hit-stop on kill (1 frame, configurable) | P2 | C-01 | [ ] |
+| C-07 | Camera shake on kill (small amplitude) | P2 | C-01 | [x] |
 
 **Phase 4 gate:** Every hit on enemy shows knockback + animation; kills feel distinct from chip damage.
 
