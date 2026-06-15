@@ -281,16 +281,21 @@ The player enters a **large overworld map**, survives as long as possible while 
 
 ---
 
-## 13. Future Open Questions
+## 13. Resolved UX Details
 
-1. **Exit confirm** — Should "Exit to Main Menu" ask "Are you sure?" or exit immediately?
-2. **Boss loot** — Do mini-bosses drop guaranteed vacuum items or only chance drops?
-3. **Victory flow** — After 30 min win, return to menu only, or show "Level Complete" with stats + retry?
-4. **Level 2+** — Same map reskin, or entirely new tilemaps per zone?
+| Question | Decision |
+|----------|----------|
+| Exit confirm | **Yes** — confirm before returning to main menu |
+| Vacuum item drops | **Random chance** from normal kills (rate in config) |
+| Victory / defeat flow | **Stats screen** + explicit **Return to Menu** button |
+
+## 14. Future Open Questions
+
+1. **Level 2+** — Same map reskin, or entirely new tilemaps per zone?
 
 ---
 
-## 14. Acceptance Criteria
+## 15. Acceptance Criteria
 
 ### Milestone A — Core loop (MVP)
 
@@ -319,7 +324,7 @@ The player enters a **large overworld map**, survives as long as possible while 
 
 ---
 
-## 15. Related Documents
+## 16. Related Documents
 
 - [TASKS.md](./TASKS.md) — Implementation task breakdown (do this before coding)
 - [ARCHITECTURE.md](./ARCHITECTURE.md) — Current + planned code architecture

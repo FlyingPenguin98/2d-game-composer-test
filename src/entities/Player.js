@@ -76,6 +76,7 @@ export class Player {
     }
 
     this.shadow.setPosition(this.sprite.x, this.sprite.y + 14);
+    this.sprite.setDepth(8 + this.sprite.y * 0.001);
 
     if (time - this.lastAttack >= this.attackCooldown) {
       const target = this.findNearestEnemy();

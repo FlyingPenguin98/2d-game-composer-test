@@ -1,6 +1,8 @@
 import { Player } from '../entities/Player.js';
 import { Enemy } from '../entities/Enemy.js';
-import { PAL, TILE, SPRITE_SCALE } from '../utils/SnesPalettes.js';
+import { WorldMap } from '../world/WorldMap.js';
+import { WorldRenderer } from '../world/WorldRenderer.js';
+import { PAL } from '../utils/SnesPalettes.js';
 import { SnesUI } from '../utils/SnesUI.js';
 import { SceneTransition } from '../utils/SceneTransition.js';
 import { AssetService } from '../services/AssetService.js';
@@ -8,6 +10,8 @@ import {
   PLAYER as PLAYER_CFG,
   WAVES,
   SCENES,
+  WORLD,
+  GAME,
 } from '../config/GameConfig.js';
 
 export class GameScene extends Phaser.Scene {
@@ -30,8 +34,8 @@ export class GameScene extends Phaser.Scene {
       this.cameras.main.setBackgroundColor(PAL.grassDark);
 
       Enemy.registerAnims(this);
-      this.createWorld(width, height);
-      this.createPlayer(width, height);
+      this.createWorld();
+      this.createPlayer();
       this.createUI(width, height);
       this.setupInput();
       this.setupCollisions();
@@ -49,6 +53,7 @@ export class GameScene extends Phaser.Scene {
     if (this.escHandler) {
       this.input.keyboard.off('keydown-ESC', this.escHandler);
     }
+    this.worldRenderer?.destroy();
   }
 
   showFatalError(err) {
@@ -62,57 +67,30 @@ export class GameScene extends Phaser.Scene {
     }).setOrigin(0.5);
   }
 
-  createWorld(width, height) {
-    const displayTile = TILE * SPRITE_SCALE;
-    const cols = Math.ceil(width / displayTile) + 1;
-    const rows = Math.ceil(height / displayTile) + 1;
+  createWorld() {
+    this.worldMap = new WorldMap(WORLD.COLS, WORLD.ROWS);
+    this.worldRenderer = new WorldRenderer(this, this.worldMap);
 
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < cols; col++) {
-        const tileIdx = this.pickTile(col, row, cols, rows);
-        this.add.image(col * displayTile, row * displayTile, 'tileset', `tile_${tileIdx}`)
-          .setOrigin(0, 0)
-          .setDisplaySize(displayTile, displayTile)
-          .setDepth(0);
-      }
-    }
+    this.physics.world.setBounds(0, 0, this.worldMap.widthPx, this.worldMap.heightPx);
 
-    const treeSpots = [
-      [3, 3], [5, 2], [cols - 4, 3], [cols - 6, 2],
-      [3, rows - 4], [6, rows - 3], [cols - 4, rows - 4],
-    ];
-    for (const [tc, tr] of treeSpots) {
-      if (tc >= 1 && tr >= 1 && tc < cols - 1 && tr < rows - 1) {
-        this.placeTree(tc, tr, displayTile);
-      }
-    }
+    this.cameras.main.setBounds(0, 0, this.worldMap.widthPx, this.worldMap.heightPx);
+    this.cameras.main.setZoom(1);
   }
 
-  pickTile(col, row, cols, rows) {
-    if (col === 0 || row === 0 || col === cols - 1 || row === rows - 1) return 3;
-    const midC = Math.floor(cols / 2);
-    const midR = Math.floor(rows / 2);
-    if (col === midC || row === midR) return 15;
-    if ((col + row) % 7 === 0) return 2;
-    return (col + row) % 2 === 0 ? 0 : 1;
-  }
+  createPlayer() {
+    const spawn = this.worldMap.getSpawnPixel();
+    this.player = new Player(this, spawn.x, spawn.y);
 
-  placeTree(col, row, displayTile) {
-    const x = col * displayTile;
-    const y = row * displayTile;
-    this.add.image(x, y, 'tileset', 'tile_12')
-      .setOrigin(0, 0).setDisplaySize(displayTile, displayTile).setDepth(6);
-    this.add.image(x, y + displayTile, 'tileset', 'tile_6')
-      .setOrigin(0, 0).setDisplaySize(displayTile, displayTile).setDepth(5);
-  }
+    this.worldRenderer.setupPlayerCollision(this.player.sprite);
 
-  createPlayer(width, height) {
-    this.player = new Player(this, width / 2, height / 2);
     this.enemies = this.physics.add.group();
     this.projectiles = this.physics.add.group();
 
+    this.cameras.main.startFollow(this.player.sprite, true, WORLD.CAMERA_LERP, WORLD.CAMERA_LERP);
+    this.cameras.main.setDeadzone(80, 60);
+
     for (let i = 0; i < WAVES.INITIAL_ENEMIES; i++) {
-      Enemy.spawnAtEdge(this, width / 2, height / 2);
+      Enemy.spawnOutsideCamera(this);
     }
   }
 
@@ -130,7 +108,7 @@ export class GameScene extends Phaser.Scene {
       size: '14px', color: PAL.uiGold, depth: 101,
     }).setOrigin(1, 0);
 
-    this.waveText = SnesUI.snesText(this, width / 2, 18, 'DEFEND THE GROVE', {
+    this.waveText = SnesUI.snesText(this, width / 2, 18, 'ELDERGROVE', {
       size: '12px', color: PAL.uiTextDim, depth: 101,
     }).setOrigin(0.5, 0);
   }
@@ -170,7 +148,7 @@ export class GameScene extends Phaser.Scene {
 
   fireProjectile(x, y, dirX, dirY) {
     const proj = this.projectiles.create(x, y, 'projectile');
-    proj.setDepth(12).setScale(SPRITE_SCALE);
+    proj.setDepth(12).setScale(GAME.SPRITE_SCALE);
     proj.damage = PLAYER_CFG.PROJECTILE_DAMAGE;
     proj.body.setVelocity(dirX * 280, dirY * 280);
     proj.body.setSize(8, 8);
@@ -269,7 +247,7 @@ export class GameScene extends Phaser.Scene {
     this.spawnTimer += delta;
     if (this.spawnTimer >= this.spawnInterval) {
       this.spawnTimer = 0;
-      Enemy.spawnAtEdge(this, this.player.sprite.x, this.player.sprite.y);
+      Enemy.spawnOutsideCamera(this);
     }
   }
 }

@@ -1,4 +1,5 @@
 import { SPRITE_SCALE } from '../utils/SnesPalettes.js';
+import { WORLD } from '../config/GameConfig.js';
 
 const ENEMY_TYPES = {
   slime: {
@@ -46,6 +47,7 @@ export class Enemy {
 
     this.sprite.body.setSize(10, 8);
     this.sprite.body.setOffset(11, 18);
+    this.sprite.setCollideWorldBounds(true);
 
     this.health = this.config.health;
     this.maxHealth = this.config.health;
@@ -92,6 +94,7 @@ export class Enemy {
     else if (Math.cos(angle) > 0) this.sprite.setFlipX(false);
 
     this.shadow.setPosition(this.sprite.x, this.sprite.y + 12);
+    this.sprite.setDepth(8 + this.sprite.y * 0.001);
   }
 
   takeDamage(amount) {
@@ -130,23 +133,95 @@ export class Enemy {
     return 'slime';
   }
 
-  static spawnAtEdge(scene, _playerX, _playerY) {
+  /**
+   * Spawn outside the camera view but inside world bounds (Phase 1).
+   */
+  static spawnOutsideCamera(scene) {
+    const worldMap = scene.worldMap;
+    if (!worldMap) {
+      return Enemy.spawnAtEdgeLegacy(scene);
+    }
+
+    const cam = scene.cameras.main;
+    const margin = WORLD.SPAWN_MARGIN;
+    const view = new Phaser.Geom.Rectangle(
+      cam.scrollX - margin,
+      cam.scrollY - margin,
+      cam.width + margin * 2,
+      cam.height + margin * 2
+    );
+
+    for (let attempt = 0; attempt < 30; attempt++) {
+      const edge = Phaser.Math.Between(0, 3);
+      let x;
+      let y;
+
+      switch (edge) {
+        case 0:
+          x = Phaser.Math.Between(margin, worldMap.widthPx - margin);
+          y = cam.scrollY - margin;
+          break;
+        case 1:
+          x = cam.scrollX + cam.width + margin;
+          y = Phaser.Math.Between(margin, worldMap.heightPx - margin);
+          break;
+        case 2:
+          x = Phaser.Math.Between(margin, worldMap.widthPx - margin);
+          y = cam.scrollY + cam.height + margin;
+          break;
+        default:
+          x = cam.scrollX - margin;
+          y = Phaser.Math.Between(margin, worldMap.heightPx - margin);
+      }
+
+      x = Phaser.Math.Clamp(x, margin, worldMap.widthPx - margin);
+      y = Phaser.Math.Clamp(y, margin, worldMap.heightPx - margin);
+
+      if (!Phaser.Geom.Rectangle.Contains(view, x, y) && !worldMap.isBlockedWorld(x, y)) {
+        const enemy = new Enemy(scene, x, y, Enemy.getRandomType());
+        scene.enemies.add(enemy.sprite);
+        return enemy;
+      }
+    }
+
+    // Fallback: spawn at world edge away from player
+    return Enemy.spawnAtEdgeLegacy(scene);
+  }
+
+  /** Legacy screen-edge spawn (fallback). */
+  static spawnAtEdgeLegacy(scene) {
     const margin = 40;
-    const w = scene.scale.width;
-    const h = scene.scale.height;
+    const cam = scene.cameras.main;
     const edge = Phaser.Math.Between(0, 3);
-    let x, y;
+    let x;
+    let y;
 
     switch (edge) {
-      case 0: x = Phaser.Math.Between(margin, w - margin); y = -margin; break;
-      case 1: x = w + margin; y = Phaser.Math.Between(margin, h - margin); break;
-      case 2: x = Phaser.Math.Between(margin, w - margin); y = h + margin; break;
-      default: x = -margin; y = Phaser.Math.Between(margin, h - margin);
+      case 0:
+        x = cam.scrollX + Phaser.Math.Between(margin, cam.width - margin);
+        y = cam.scrollY - margin;
+        break;
+      case 1:
+        x = cam.scrollX + cam.width + margin;
+        y = cam.scrollY + Phaser.Math.Between(margin, cam.height - margin);
+        break;
+      case 2:
+        x = cam.scrollX + Phaser.Math.Between(margin, cam.width - margin);
+        y = cam.scrollY + cam.height + margin;
+        break;
+      default:
+        x = cam.scrollX - margin;
+        y = cam.scrollY + Phaser.Math.Between(margin, cam.height - margin);
     }
 
     const enemy = new Enemy(scene, x, y, Enemy.getRandomType());
     scene.enemies.add(enemy.sprite);
     return enemy;
+  }
+
+  /** @deprecated Use spawnOutsideCamera */
+  static spawnAtEdge(scene) {
+    return Enemy.spawnOutsideCamera(scene);
   }
 }
 

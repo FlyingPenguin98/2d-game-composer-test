@@ -25,15 +25,15 @@ Build the scrollable map before layering VS systems on top.
 
 | ID | Task | Priority | Deps | Acceptance criteria |
 |----|------|----------|------|---------------------|
-| W-01 | Add `WorldConfig` constants (world px size, tile dimensions) | P0 | DOC | Constants in `GameConfig.js` or new file |
-| W-02 | Create `WorldMap` class — 2D tile index array, deterministic LTTP-style layout | P0 | W-01 | Map data is fixed seed, not per-frame random |
-| W-03 | Render world tilemap from `WorldMap` using existing tileset frames | P0 | W-02 | All tiles visible when camera pans |
-| W-04 | Camera follow player with lerp; clamp to world bounds | P0 | W-03 | No black void at edges |
-| W-05 | Move player/enemy/projectile coords to world space (not screen space) | P0 | W-04 | Entities stay correct while scrolling |
-| W-06 | Update `Enemy.spawnAtEdge` → spawn outside camera, inside world | P0 | W-05 | Enemies appear off-screen relative to camera |
-| W-07 | Add collision layer (blocked tiles: trees, cliffs, water) | P1 | W-02 | Player cannot walk through solids |
-| W-08 | Place tree/bush props from map data (not hardcoded spots) | P1 | W-02 | Props match collision |
-| W-09 | Set player spawn point in map data | P1 | W-02 | Consistent start position |
+| W-01 | Add `WorldConfig` constants (world px size, tile dimensions) | P0 | DOC | [x] |
+| W-02 | Create `WorldMap` class — 2D tile index array, deterministic LTTP-style layout | P0 | W-01 | [x] |
+| W-03 | Render world tilemap from `WorldMap` using existing tileset frames | P0 | W-02 | [x] |
+| W-04 | Camera follow player with lerp; clamp to world bounds | P0 | W-03 | [x] |
+| W-05 | Move player/enemy/projectile coords to world space (not screen space) | P0 | W-04 | [x] |
+| W-06 | Update `Enemy.spawnAtEdge` → spawn outside camera, inside world | P0 | W-05 | [x] |
+| W-07 | Add collision layer (blocked tiles: trees, cliffs, water) | P1 | W-02 | [x] |
+| W-08 | Place tree/bush props from map data (not hardcoded spots) | P1 | W-02 | [x] |
+| W-09 | Set player spawn point in map data | P1 | W-02 | [x] |
 
 **Phase 1 gate:** Player can walk around a 3×+ screen world with camera follow and basic collision.
 

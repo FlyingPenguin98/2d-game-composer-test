@@ -12,6 +12,23 @@ export const GAME = {
   SPRITE_SCALE: 2,
 };
 
+/** World map — 3× viewport screens (confirmed sufficient). */
+export const WORLD = {
+  SCREENS_W: 3,
+  SCREENS_H: 3,
+  get COLS() {
+    return Math.floor((GAME.WIDTH / (GAME.TILE * GAME.SPRITE_SCALE)) * WORLD.SCREENS_W);
+  },
+  get ROWS() {
+    return Math.floor((GAME.HEIGHT / (GAME.TILE * GAME.SPRITE_SCALE)) * WORLD.SCREENS_H);
+  },
+  get DISPLAY_TILE() {
+    return GAME.TILE * GAME.SPRITE_SCALE;
+  },
+  CAMERA_LERP: 0.1,
+  SPAWN_MARGIN: 48,
+};
+
 export const PLAYER = {
   SPEED: 130,
   MAX_HEALTH: 100,
