@@ -1,5 +1,6 @@
 import { PAL, SPRITE_SCALE } from '../utils/SnesPalettes.js';
 import { PLAYER as PLAYER_CFG } from '../config/GameConfig.js';
+import { Hitboxes } from '../utils/Hitboxes.js';
 
 export class Player {
   constructor(scene, x, y) {
@@ -11,8 +12,7 @@ export class Player {
     this.sprite = scene.physics.add.sprite(x, y, 'player', 0);
     this.sprite.setScale(SPRITE_SCALE);
     this.sprite.setDepth(10);
-    this.sprite.body.setSize(12, 8);
-    this.sprite.body.setOffset(10, 20);
+    Hitboxes.configurePlayer(this.sprite);
     this.sprite.setCollideWorldBounds(true);
 
     this.speed = PLAYER_CFG.SPEED;

@@ -91,6 +91,22 @@ Address user feedback before or in parallel with Phase 5.
 
 ---
 
+## Phase 4b — Collision & Hit Detection
+
+Fix unreliable projectile hits and tune world collision so blockers read clearly on grass.
+
+| ID | Task | Priority | Deps | Acceptance criteria |
+|----|------|----------|------|---------------------|
+| COL-01 | Shared `Hitboxes` utility — circle bodies for player, enemy, projectile | P0 | C-01 | [x] |
+| COL-02 | Per-tile collider shapes (trunk strip, bush mound, canopy crown, water full) | P0 | W-07 | [x] |
+| COL-03 | Projectile hit test via distance + segment sweep (anti-tunneling) | P0 | COL-01 | [x] |
+| COL-04 | Blocking tiles visually distinct from grass (outline, shadow, contrast) | P0 | A-03 | [x] |
+| COL-05 | Player can walk under canopy tiles; trunks/bushes block feet only | P1 | COL-02 | [x] |
+
+**Phase 4b gate:** Shots that visually connect always register; collidable props stand out from background.
+
+---
+
 ## Phase 5 — Vampire Survivors Progression Core
 
 | ID | Task | Priority | Deps | Acceptance criteria |
@@ -213,6 +229,9 @@ Phase 0 (docs) ──► Phase 1 (world) ──► Phase 3 (timer)
                          │                    │
                          └────────┬───────────┘
                                   ▼
+                         Phase 4b (collision)
+                                  │
+                                  ▼
                             Phase 5 (XP/levels/vacuum)
                                   │
                     ┌─────────────┼─────────────┐
@@ -254,6 +273,7 @@ Phase 0 (docs) ──► Phase 1 (world) ──► Phase 3 (timer)
 | 2 Art | 7 | 4 |
 | 3 Timer | 5 | 4 |
 | 4 Combat feel | 7 | 4 |
+| 4b Collision | 5 | 4 |
 | 5 VS progression | 12 | 9 |
 | 5b Pause menu | 5 | 4 |
 | 6 Spawn director | 5 | 1 |
@@ -261,7 +281,7 @@ Phase 0 (docs) ──► Phase 1 (world) ──► Phase 3 (timer)
 | 7 Upgrade content | 5 | 0 |
 | 8 Audio | 7 | 0 |
 | 9 Hardening | 6 | 0 |
-| **Total** | **81** | **41** |
+| **Total** | **86** | **45** |
 
 ---
 

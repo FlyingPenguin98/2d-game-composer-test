@@ -1,6 +1,3 @@
-import { GAME } from '../config/GameConfig.js';
-import { BLOCKING_TILES } from './WorldMap.js';
-
 /**
  * Renders WorldMap tiles and builds invisible collision bodies for blocked tiles.
  */
@@ -32,13 +29,14 @@ export class WorldRenderer {
 
         this.tileSprites.push(img);
 
-        if (BLOCKING_TILES.has(tileId)) {
+        const collider = map.getTileCollider(tileId);
+        if (collider) {
           const body = this.collisionGroup.create(
-            x + this.displayTile / 2,
-            y + this.displayTile / 2,
+            x + collider.x + collider.w / 2,
+            y + collider.y + collider.h / 2,
             'particle'
           );
-          body.setSize(this.displayTile, this.displayTile).setVisible(false).setActive(true);
+          body.setSize(collider.w, collider.h).setVisible(false).setActive(true);
         }
       }
     }

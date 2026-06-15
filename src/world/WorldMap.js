@@ -106,6 +106,37 @@ export class WorldMap {
     return points.some(([x, y]) => this.isBlockedWorld(x, y));
   }
 
+  /**
+   * Per-tile collision shape in local display-tile space (0–displayTile).
+   * Narrower than full tiles so movement matches visible art.
+   */
+  getTileCollider(tileId) {
+    const d = this.displayTile;
+    switch (tileId) {
+      case TILE.TRUNK:
+        return { x: 12, y: 10, w: 8, h: 22 };
+      case TILE.BUSH:
+        return { x: 4, y: 14, w: 24, h: 16 };
+      case TILE.STONE:
+        return { x: 2, y: 6, w: 28, h: 24 };
+      case TILE.CANOPY:
+        return { x: 2, y: 0, w: 28, h: 18 };
+      case TILE.CANOPY_NW:
+        return { x: 0, y: 0, w: d * 0.65, h: 16 };
+      case TILE.CANOPY_NE:
+        return { x: d * 0.35, y: 0, w: d * 0.65, h: 16 };
+      case TILE.CANOPY_SW:
+        return { x: 0, y: 12, w: d * 0.65, h: 16 };
+      case TILE.CANOPY_SE:
+        return { x: d * 0.35, y: 12, w: d * 0.65, h: 16 };
+      case TILE.WATER_A:
+      case TILE.WATER_B:
+        return { x: 0, y: 0, w: d, h: d };
+      default:
+        return null;
+    }
+  }
+
   getSpawnPixel() {
     return {
       x: this.spawnCol * this.displayTile + this.displayTile / 2,
