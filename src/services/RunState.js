@@ -1,6 +1,6 @@
-import { WAVES } from '../config/GameConfig.js';
+import { WAVES, xpToReachNextLevel } from '../config/GameConfig.js';
 
-/** Per-run state — timer, score, kills, outcome. */
+/** Per-run state — timer, score, kills, XP, level, upgrades. */
 export class RunState {
   constructor() {
     this.reset();
@@ -12,6 +12,12 @@ export class RunState {
     this.score = 0;
     this.outcome = 'playing';
     this.isPaused = false;
+
+    this.xp = 0;
+    this.level = 1;
+    this.xpToNext = xpToReachNextLevel(this.level);
+    this.upgrades = [];
+    this.pendingLevelUps = 0;
   }
 
   update(delta) {
@@ -22,6 +28,30 @@ export class RunState {
   addKill(points) {
     this.kills += 1;
     this.score += points;
+  }
+
+  addXp(amount) {
+    this.xp += amount;
+    this.processLevelUps();
+  }
+
+  /** Consume XP thresholds; queue level-ups for the picker. */
+  processLevelUps() {
+    while (this.xp >= this.xpToNext) {
+      this.xp -= this.xpToNext;
+      this.level += 1;
+      this.xpToNext = xpToReachNextLevel(this.level);
+      this.pendingLevelUps += 1;
+    }
+  }
+
+  recordUpgrade(upgradeId) {
+    this.upgrades.push(upgradeId);
+    this.pendingLevelUps = Math.max(0, this.pendingLevelUps - 1);
+  }
+
+  getUpgradeRank(upgradeId) {
+    return this.upgrades.filter((id) => id === upgradeId).length;
   }
 
   endDefeat() {

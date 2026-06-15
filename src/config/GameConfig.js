@@ -54,6 +54,23 @@ export const COMBAT = {
   HIT_SHAKE_INTENSITY: 0.003,
 };
 
+/** XP, leveling, and pickup — Phase 5. */
+export const XP = {
+  /** Gems auto-collect within this radius (display px). */
+  PICKUP_RADIUS: 56,
+  /** Chance per kill to drop a vacuum item (0–1). */
+  VACUUM_DROP_CHANCE: 0.015,
+  /** Orbiting blade tick interval (ms). */
+  ORBIT_TICK_MS: 350,
+  ORBIT_RADIUS: 38,
+  ORBIT_DAMAGE: 14,
+};
+
+/** XP required to advance from `level` to level + 1. */
+export function xpToReachNextLevel(level) {
+  return Math.floor(20 + level * 25 + level * level * 2);
+}
+
 export const TEXTURES = {
   TILESET: 'tileset',
   PLAYER: 'player',
@@ -65,6 +82,8 @@ export const TEXTURES = {
   SHADOW: 'shadow',
   HEART: 'heart',
   HEART_EMPTY: 'heart_empty',
+  XP_GEM: 'xp_gem',
+  VACUUM_ITEM: 'vacuum_item',
 };
 
 export const FONTS = {

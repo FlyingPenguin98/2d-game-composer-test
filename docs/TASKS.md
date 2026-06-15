@@ -111,18 +111,18 @@ Fix unreliable projectile hits and tune world collision so blockers read clearly
 
 | ID | Task | Priority | Deps | Acceptance criteria |
 |----|------|----------|------|---------------------|
-| P-01 | `RunState` fields: xp, level, xpToNext, upgrades[] | P0 | T-01 | State resets each run |
-| P-02 | XP gem entity — drops on enemy death, idle on ground | P0 | C-01 | Gem spawns at corpse position |
-| P-03 | Default **XP pickup radius** on player (overlap + radius check) | P0 | P-02 | Nearby gems collect without standing on them |
-| P-03b | **Vacuum item** drop + pickup — pulls all gems to player | P0 | P-02 | One-shot vacuum VFX, all XP collected |
-| P-04 | XP bar + level number in HUD | P0 | P-01 | Always visible |
-| P-05 | Level-up trigger when xp >= xpToNext | P0 | P-01 | Pauses game (`physics.pause`) |
-| P-06 | `UpgradeRegistry` — data file with all upgrade defs | P0 | — | At least 6 upgrades defined |
-| P-07 | Level-up UI — 3 random choices, SNES window | P0 | P-05, P-06 | Keyboard 1/2/3 + click |
-| P-08 | Apply upgrade effects to player stats / attack pattern | P0 | P-07 | Each upgrade measurably works |
-| P-09 | XP curve formula (level 1→2 fast, scales up) | P1 | P-01 | Tuned so ~5 min = level 5-ish |
-| P-10 | Game over shows level + XP + time + kills | P1 | P-01, T-04 | Full run summary |
-| P-11 | Magnet Charm upgrade (+40% radius per rank) | P0 | P-03, P-08 | Stacks with default radius |
+| P-01 | `RunState` fields: xp, level, xpToNext, upgrades[] | P0 | T-01 | [x] |
+| P-02 | XP gem entity — drops on enemy death, idle on ground | P0 | C-01 | [x] |
+| P-03 | Default **XP pickup radius** on player (overlap + radius check) | P0 | P-02 | [x] |
+| P-03b | **Vacuum item** drop + pickup — pulls all gems to player | P0 | P-02 | [x] |
+| P-04 | XP bar + level number in HUD | P0 | P-01 | [x] |
+| P-05 | Level-up trigger when xp >= xpToNext | P0 | P-01 | [x] |
+| P-06 | `UpgradeRegistry` — data file with all upgrade defs | P0 | — | [x] |
+| P-07 | Level-up UI — 3 random choices, SNES window | P0 | P-05, P-06 | [x] |
+| P-08 | Apply upgrade effects to player stats / attack pattern | P0 | P-07 | [x] |
+| P-09 | XP curve formula (level 1→2 fast, scales up) | P1 | P-01 | [x] |
+| P-10 | Game over shows level + XP + time + kills | P1 | P-01, T-04 | [x] |
+| P-11 | Magnet Charm upgrade (+40% radius per rank) | P0 | P-03, P-08 | [x] |
 
 **Phase 5 gate:** Full VS loop — kill → XP → level → pick upgrade → stronger → survive longer.
 

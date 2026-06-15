@@ -11,6 +11,7 @@ export class TextureGenerator {
     this.generatePlayerSheet();
     this.generateEnemies();
     this.generateProjectiles();
+    this.generatePickupItems();
     this.generateFX();
     this.generateUI();
   }
@@ -536,6 +537,38 @@ export class TextureGenerator {
     pc.set(3, 2, PAL.bolt3);
     pc.set(4, 5, PAL.bolt3);
     this.addCanvas( 'projectile', pc.flush());
+  }
+
+  static generatePickupItems() {
+    const gem = new PixelCanvas(8, 8, 1);
+    gem.set(3, 2, PAL.slimeHi);
+    gem.set(4, 2, PAL.slimeHi);
+    gem.set(2, 3, PAL.slime1);
+    gem.set(3, 3, PAL.slime2);
+    gem.set(4, 3, PAL.slime2);
+    gem.set(5, 3, PAL.slime1);
+    gem.set(2, 4, PAL.slime2);
+    gem.set(3, 4, PAL.white);
+    gem.set(4, 4, PAL.slimeHi);
+    gem.set(5, 4, PAL.slime2);
+    gem.set(3, 5, PAL.slime3);
+    gem.set(4, 5, PAL.slime3);
+    this.addCanvas('xp_gem', gem.flush());
+
+    const vacuum = new PixelCanvas(8, 8, 1);
+    vacuum.set(3, 1, PAL.flower2);
+    vacuum.set(4, 1, PAL.flower2);
+    vacuum.set(2, 2, PAL.flower1);
+    vacuum.set(5, 2, PAL.flower1);
+    vacuum.set(1, 3, PAL.flower1);
+    vacuum.set(6, 3, PAL.flower1);
+    vacuum.set(2, 4, PAL.flower2);
+    vacuum.set(5, 4, PAL.flower2);
+    vacuum.set(3, 5, PAL.flower2);
+    vacuum.set(4, 5, PAL.flower2);
+    vacuum.set(3, 3, PAL.white);
+    vacuum.set(4, 3, PAL.white);
+    this.addCanvas('vacuum_item', vacuum.flush());
   }
 
   static generateFX() {
