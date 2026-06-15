@@ -11,8 +11,11 @@ A top-down fantasy action game with **SNES / 16-bit pixel art** — limited pale
 
 ## Documentation
 
-- [Requirements](docs/REQUIREMENTS.md) — full feature list, status, and open questions
-- [Architecture](docs/ARCHITECTURE.md) — scene flow, code layout, design decisions
+| Document | Purpose |
+|----------|---------|
+| [Requirements](docs/REQUIREMENTS.md) | Full feature spec — LTTP art, VS progression, timer, combat feel |
+| [Tasks](docs/TASKS.md) | Phased implementation checklist (**start here before coding**) |
+| [Architecture](docs/ARCHITECTURE.md) | Scene flow, planned systems, code layout |
 
 ## Getting Started
 
