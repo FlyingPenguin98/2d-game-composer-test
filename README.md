@@ -18,6 +18,21 @@ npm run dev
 
 Open http://localhost:5173 in your browser.
 
+## Play Online (Any Device)
+
+After the deploy workflow runs (triggered automatically on push), you can play on any phone, tablet, or PC:
+
+| Service | URL |
+|---------|-----|
+| **GitHub Pages** (recommended) | https://flyingpenguin98.github.io/2d-game-composer-test/ |
+| **GitHack** (instant mirror) | https://raw.githack.com/FlyingPenguin98/2d-game-composer-test/gh-pages/index.html |
+
+GitHack re-serves the built files from the `gh-pages` branch with correct MIME types, so it works great for quick mobile testing without waiting for GitHub Pages to update.
+
+### One-time setup
+
+In the repo go to **Settings → Pages → Build and deployment → Source** and select **Deploy from a branch**, then choose the **`gh-pages`** branch and **`/ (root)`**. The GitHub Action creates and updates that branch automatically on every push.
+
 ## Controls
 
 | Key | Action |
