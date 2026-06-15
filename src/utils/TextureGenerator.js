@@ -527,16 +527,96 @@ export class TextureGenerator {
   // ── Projectiles & FX ──────────────────────────────────────────────
 
   static generateProjectiles() {
-    const pc = new PixelCanvas(8, 8, 1);
+    this._projArcane();
+    this._projPierce();
+    this._projEmber();
+    this._weaponBlade();
+    const src = this._tex.get('proj_arcane')?.getSourceImage?.();
+    if (src) {
+      const clone = document.createElement('canvas');
+      clone.width = src.width;
+      clone.height = src.height;
+      clone.getContext('2d').drawImage(src, 0, 0);
+      this.addCanvas('projectile', clone);
+    }
+  }
+
+  static _projArcane() {
+    const pc = new PixelCanvas(10, 10, 1);
+    pc.set(4, 2, PAL.bolt3);
+    pc.set(5, 2, PAL.bolt3);
     pc.set(3, 3, PAL.bolt1);
-    pc.set(4, 3, PAL.bolt1);
-    pc.set(3, 4, PAL.bolt2);
+    pc.set(4, 3, PAL.white);
+    pc.set(5, 3, PAL.bolt1);
+    pc.set(6, 3, PAL.bolt1);
+    pc.set(2, 4, PAL.bolt2);
+    pc.set(3, 4, PAL.bolt1);
     pc.set(4, 4, PAL.bolt2);
-    pc.set(2, 3, PAL.bolt3);
-    pc.set(5, 4, PAL.bolt3);
-    pc.set(3, 2, PAL.bolt3);
+    pc.set(5, 4, PAL.bolt1);
+    pc.set(6, 4, PAL.bolt2);
+    pc.set(7, 4, PAL.bolt3);
+    pc.set(3, 5, PAL.bolt2);
     pc.set(4, 5, PAL.bolt3);
-    this.addCanvas( 'projectile', pc.flush());
+    pc.set(5, 5, PAL.bolt3);
+    pc.set(6, 5, PAL.bolt2);
+    this.addCanvas('proj_arcane', pc.flush());
+  }
+
+  static _projPierce() {
+    const pc = new PixelCanvas(12, 8, 1);
+    for (let x = 2; x < 10; x++) {
+      pc.set(x, 3, PAL.boneEye);
+      pc.set(x, 4, 0xf87858);
+    }
+    pc.set(10, 3, PAL.white);
+    pc.set(10, 4, PAL.white);
+    pc.set(1, 4, PAL.boneEye);
+    pc.set(0, 3, PAL.boneEye);
+    pc.set(0, 4, PAL.boneEye);
+    this.addCanvas('proj_pierce', pc.flush());
+  }
+
+  static _projEmber() {
+    const pc = new PixelCanvas(10, 10, 1);
+    pc.set(4, 1, 0xff9040);
+    pc.set(5, 1, 0xff6020);
+    pc.set(3, 2, 0xff6020);
+    pc.set(4, 2, 0xffa040);
+    pc.set(5, 2, 0xff6020);
+    pc.set(6, 2, 0xff6020);
+    pc.set(2, 3, 0xe85020);
+    pc.set(3, 3, 0xff8040);
+    pc.set(4, 3, PAL.white);
+    pc.set(5, 3, 0xff8040);
+    pc.set(6, 3, 0xff6020);
+    pc.set(7, 3, 0xe85020);
+    pc.set(3, 4, 0xff6020);
+    pc.set(4, 4, 0xff9040);
+    pc.set(5, 4, 0xff6020);
+    pc.set(4, 5, 0xc04018);
+    pc.set(5, 5, 0xc04018);
+    this.addCanvas('proj_ember', pc.flush());
+  }
+
+  static _weaponBlade() {
+    const pc = new PixelCanvas(10, 10, 1);
+    pc.set(4, 1, PAL.sword3);
+    pc.set(5, 1, PAL.sword2);
+    pc.set(4, 2, PAL.sword2);
+    pc.set(5, 2, PAL.sword1);
+    pc.set(4, 3, PAL.sword1);
+    pc.set(5, 3, PAL.white);
+    pc.set(4, 4, PAL.sword1);
+    pc.set(5, 4, PAL.sword1);
+    pc.set(3, 5, PAL.sword2);
+    pc.set(4, 5, PAL.sword3);
+    pc.set(5, 5, PAL.sword3);
+    pc.set(6, 5, PAL.sword2);
+    pc.set(4, 6, PAL.boot1);
+    pc.set(5, 6, PAL.boot1);
+    pc.set(3, 7, 0x88d0f0);
+    pc.set(6, 7, 0x88d0f0);
+    this.addCanvas('weapon_blade', pc.flush());
   }
 
   static generatePickupItems() {

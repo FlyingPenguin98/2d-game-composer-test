@@ -1,4 +1,4 @@
-import { WAVES, xpToReachNextLevel } from '../config/GameConfig.js';
+import { xpToReachNextLevel } from '../config/GameConfig.js';
 
 /** Per-run state — timer, score, kills, XP, level, upgrades. */
 export class RunState {
@@ -68,14 +68,4 @@ export class RunState {
   get elapsedSeconds() {
     return Math.floor(this.elapsedMs / 1000);
   }
-}
-
-/** Spawn interval decreases as survival time increases. */
-export function getSpawnIntervalForTime(elapsedMs) {
-  const minutes = elapsedMs / 60000;
-  const reduction = Math.floor(minutes * 2) * 200;
-  return Math.max(
-    WAVES.MIN_SPAWN_INTERVAL,
-    WAVES.INITIAL_SPAWN_INTERVAL - reduction
-  );
 }

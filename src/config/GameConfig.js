@@ -40,10 +40,18 @@ export const PLAYER = {
 
 export const WAVES = {
   INITIAL_SPAWN_INTERVAL: 2800,
-  MIN_SPAWN_INTERVAL: 900,
+  MIN_SPAWN_INTERVAL: 700,
   SPAWN_INTERVAL_STEP: 150,
   KILLS_PER_WAVE: 5,
   INITIAL_ENEMIES: 3,
+  BASE_ENEMY_CAP: 45,
+  MAX_ENEMIES: 120,
+};
+
+/** Upgrade slot limits — Phase 6 / 7. */
+export const UPGRADE_LIMITS = {
+  MAX_STAT_ITEMS: 6,
+  MAX_WEAPONS: 6,
 };
 
 export const COMBAT = {

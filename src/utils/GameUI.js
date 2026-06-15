@@ -132,6 +132,10 @@ export class GameUI {
     if (opts.origin) t.setOrigin(...(Array.isArray(opts.origin) ? opts.origin : [opts.origin, 0]));
     if (opts.align) t.setAlign(opts.align);
     if (opts.wordWrap) t.setWordWrapWidth(opts.wordWrap);
+    if (opts.maxLines) {
+      t.setMaxLines(opts.maxLines);
+      t.setWordWrapWidth(opts.wordWrap ?? t.width);
+    }
     return t;
   }
 

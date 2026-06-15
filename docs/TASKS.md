@@ -146,11 +146,11 @@ Fix unreliable projectile hits and tune world collision so blockers read clearly
 
 | ID | Task | Priority | Deps | Acceptance criteria |
 |----|------|----------|------|---------------------|
-| PAU-01 | `PauseMenu` overlay component (SNES window) | P0 | UI-02 | Resume + Exit to Main Menu buttons |
-| PAU-02 | ESC toggles pause; freezes physics, timer, spawns | P0 | T-01, PAU-01 | Game state frozen while paused |
-| PAU-03 | Resume restores gameplay exactly | P0 | PAU-02 | Timer continues from same elapsed |
-| PAU-04 | Exit to Main Menu via SceneTransition | P0 | PAU-01 | Clean return, no stuck listeners |
-| PAU-05 | Block ESC during level-up picker (or route to picker only) | P1 | P-07, PAU-02 | No accidental menu exit |
+| PAU-01 | `PauseMenu` overlay component (SNES window) | P0 | UI-02 | [x] |
+| PAU-02 | ESC toggles pause; freezes physics, timer, spawns | P0 | T-01, PAU-01 | [x] |
+| PAU-03 | Resume restores gameplay exactly | P0 | PAU-02 | [x] |
+| PAU-04 | Exit to Main Menu via SceneTransition | P0 | PAU-01 | [x] |
+| PAU-05 | Block ESC during level-up picker (or route to picker only) | P1 | P-07, PAU-02 | [x] |
 
 **Phase 5c gate:** ESC pause/resume/exit works reliably mid-run.
 
@@ -162,11 +162,11 @@ Replace kill-only difficulty with VS-style time curve.
 
 | ID | Task | Priority | Deps | Acceptance criteria |
 |----|------|----------|------|---------------------|
-| S-01 | Create `SpawnDirector` — spawn interval from elapsed time | P0 | T-01 | Table/curve, not kill count |
-| S-02 | Enemy cap (despawn or stop spawn at max) | P1 | S-01 | No FPS collapse at 15+ min |
-| S-03 | Weighted enemy mix shifts over time (more bats/skeletons later) | P1 | S-01 | Early = slimes, late = mix |
-| S-04 | Remove or demote old kill-based wave text | P1 | S-01 | HUD shows time milestones instead |
-| S-05 | Time milestone toasts ("5:00 — Wave intensifies!") | P2 | S-01 | Optional feedback |
+| S-01 | Create `SpawnDirector` — spawn interval from elapsed time | P0 | T-01 | [x] |
+| S-02 | Enemy cap (despawn or stop spawn at max) | P1 | S-01 | [x] |
+| S-03 | Weighted enemy mix shifts over time (more bats/skeletons later) | P1 | S-01 | [x] |
+| S-04 | Remove or demote old kill-based wave text | P1 | S-01 | [x] |
+| S-05 | Time milestone toasts ("5:00 — Wave intensifies!") | P2 | S-01 | [x] |
 
 **Phase 6 gate:** Difficulty feels driven by survival time, matching VS.
 
@@ -190,17 +190,17 @@ Replace kill-only difficulty with VS-style time curve.
 
 ---
 
-## Phase 7 — Upgrade Content Expansion
-
-After core loop works, add variety.
+## Phase 7 — Upgrade Content & Evolution
 
 | ID | Task | Priority | Deps | Acceptance criteria |
 |----|------|----------|------|---------------------|
-| U-01 | Implement UP-01 through UP-08 from REQUIREMENTS | P1 | P-08 | All 8 functional |
-| U-02 | Orbiting blade passive weapon | P1 | P-08 | Damages nearby enemies on tick |
-| U-03 | Multi-projectile spread pattern | P1 | P-08 | Arcane Bolt upgrade visible |
-| U-04 | Pierce — projectile hits N enemies | P1 | P-08 | Line through crowd |
+| U-01 | Weapon evolution system (combine specific arms + stats) | P1 | P-08 | Evolved weapons unlock at thresholds |
+| U-02 | Expand weapon pool toward 6 distinct arms with unique VFX | P1 | P-08 | Each weapon visually distinct |
+| U-03 | Expand stat/item pool toward 6 with clearer icons | P1 | P-08 | Attributes readable in loadout |
+| U-04 | Pierce / multi-shot / aura polish pass | P1 | P-08 | Upgrades feel different in combat |
 | U-05 | Upgrade rarity weights (common vs rare) | P2 | P-06 | Rare upgrades appear less |
+| U-06 | Level-up UI: prevent text overflow (dynamic font shrink) | P1 | UI-03 | No clipped card text |
+| U-07 | Tab panel for full loadout review mid-run | P2 | UI-03 | See all 6+6 slots and levels |
 
 ---
 
@@ -301,7 +301,7 @@ Phase 0 (docs) ──► Phase 1 (world) ──► Phase 3 (timer)
 | 7 Upgrade content | 5 | 0 |
 | 8 Audio | 7 | 0 |
 | 9 Hardening | 6 | 0 |
-| **Total** | **86** | **45** |
+| **Total** | **91** | **49** |
 
 ---
 
