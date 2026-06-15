@@ -15,19 +15,23 @@ BootScene
 
 ---
 
-## Planned Scene Flow (after Phase 5)
+## Planned Scene Flow (after Milestone B)
 
 ```
 BootScene
   └─ AssetService.bootstrap()
        └─ MainMenuScene
             └─ GameScene
-                 ├─ RunState (timer, xp, level, upgrades)
+                 ├─ RunState (timer, xp, level, outcome: playing|won|lost)
                  ├─ WorldMap + camera
-                 ├─ SpawnDirector
-                 ├─ [level-up] ── pauses → UpgradePicker UI → resumes
-                 ├─ [death] ── RunSummary (time, level, kills)
-                 └─ [ESC] ── MainMenuScene
+                 ├─ SpawnDirector (time-based normals)
+                 ├─ BossDirector (5:00 mini ×5, 30:00 main)
+                 ├─ AudioManager (music + SFX)
+                 ├─ [level-up] ── pauses → UpgradePicker → resumes
+                 ├─ [ESC] ── PauseMenu → Resume | Exit to Menu
+                 ├─ [death] ── RunSummary (game over)
+                 ├─ [boss defeated @ 30:00] ── RunSummary (victory)
+                 └─ AudioManager.stopAll() on scene exit
 ```
 
 ---
@@ -64,20 +68,25 @@ src/
     UpgradeRegistry.js      # NEW — data-driven upgrade defs
   services/
     AssetService.js
-    RunState.js               # NEW — per-run timer, xp, level, upgrades
-    SpawnDirector.js          # NEW — time-based enemy spawning
+    RunState.js               # timer, xp, level, outcome (playing|won|lost)
+    SpawnDirector.js          # time-based normal enemy spawning
+    BossDirector.js           # NEW — 5-min mini-boss + 30-min main boss
+    AudioManager.js           # NEW — music loops + SFX
   world/
-    WorldMap.js               # NEW — tile grid, collision, zones
-    WorldRenderer.js          # NEW — tilemap + prop rendering
+    WorldMap.js
+    WorldRenderer.js
   entities/
-    Player.js                 # + upgrade modifiers, magnet radius
+    Player.js                 # + pickup radius, upgrade modifiers
     Enemy.js                  # + hit state machine, knockback
-    XpGem.js                  # NEW — droppable XP pickup
-    Projectile.js             # NEW (optional extract from GameScene)
+    MiniBoss.js               # NEW — extends Enemy, scaled stats
+    MainBoss.js               # NEW — 30-min win condition
+    XpGem.js                  # idle gems on ground
+    VacuumItem.js             # NEW — one-shot pull-all-XP pickup
   ui/
-    Hud.js                    # NEW — hearts, timer, XP bar
-    UpgradePicker.js          # NEW — level-up 3-choice modal
-    RunSummary.js             # NEW — game over stats panel
+    Hud.js                    # hearts, timer, XP bar
+    UpgradePicker.js          # level-up 3-choice modal
+    PauseMenu.js              # NEW — Resume / Exit to Main Menu
+    RunSummary.js             # game over OR victory stats panel
   scenes/
     GameScene.js              # Orchestrator only — delegates to systems
 ```
@@ -91,15 +100,61 @@ Single object owned by `GameScene`, reset on each run.
 
 | Field | Type | Purpose |
 |-------|------|---------|
-| `elapsedMs` | number | Run timer |
+| `elapsedMs` | number | Run timer (pauses when game paused) |
 | `xp` | number | Current XP |
 | `level` | number | Current level (starts 1) |
 | `xpToNext` | number | Threshold for next level |
 | `upgrades` | string[] | Applied upgrade IDs |
 | `kills` | number | Kill counter |
 | `score` | number | Score counter |
+| `outcome` | `'playing' \| 'won' \| 'lost'` | Run result |
+| `isPaused` | boolean | Pause menu or level-up freeze |
 
-Methods: `start()`, `update(delta)`, `addXp(n)`, `levelUp()`, `getFormattedTime()`
+Methods: `start()`, `update(delta)`, `addXp(n)`, `levelUp()`, `endVictory()`, `endDefeat()`, `getFormattedTime()`
+
+### BossDirector (planned)
+
+| Milestone | Action |
+|-----------|--------|
+| 5:00 | Spawn mini-boss #1 |
+| 10:00 | Spawn mini-boss #2 |
+| 15:00 | Spawn mini-boss #3 |
+| 20:00 | Spawn mini-boss #4 |
+| 25:00 | Spawn mini-boss #5 |
+| 30:00 | Spawn main boss; normal spawns reduced |
+
+On main boss death → `RunState.endVictory()` → victory screen.
+
+Mini-boss index scales HP/damage (config table in `GameConfig.js`).
+
+### XP pickup (planned)
+
+```
+Player has basePickupRadius (e.g. 56px)
+  ├─ Each frame: collect gems where dist(player, gem) < radius
+  ├─ Magnet Charm upgrade: radius *= 1.4 per rank
+  └─ VacuumItem on pickup: tween ALL gems → player, then addXp
+```
+
+Vacuum items drop from enemies at low chance, or guaranteed from mini-bosses (tune in playtest).
+
+### PauseMenu (planned)
+
+ESC during `outcome === 'playing'` and not in level-up picker:
+1. Set `RunState.isPaused = true`
+2. `physics.pause()`, stop SpawnDirector ticks
+3. Show overlay: **Resume** | **Exit to Main Menu**
+4. Resume reverses all of the above
+
+### AudioManager (planned)
+
+```javascript
+AudioManager.playMusic('gameplay');
+AudioManager.playSfx('enemy_hit');
+AudioManager.playSfx('boss_spawn');
+```
+
+v1: Web Audio API procedural chiptune (square/triangle waves) — no external files required.
 
 ### WorldMap (planned)
 | Responsibility | Detail |
@@ -112,10 +167,10 @@ Methods: `start()`, `update(delta)`, `addXp(n)`, `levelUp()`, `getFormattedTime(
 Camera: `Phaser.Cameras.Scene2D.Camera.startFollow(player)` with bounds `{ x: 0, y: 0, width: worldW, height: worldH }`.
 
 ### SpawnDirector (planned)
-Input: `RunState.elapsedMs`, player level, camera bounds.  
+Input: `RunState.elapsedMs`, player level, camera bounds, `BossDirector.isBossActive`.  
 Output: spawn requests `{ type, x, y }`.
 
-Replaces current kill-based interval in `GameScene.update()`.
+Replaces current kill-based interval in `GameScene.update()`. Yields to boss fights when active.
 
 ### Enemy hit state machine (planned)
 
@@ -164,12 +219,13 @@ Named frames `tile_0`…`tile_15` on tileset — avoids `setCrop()` bugs.
 
 ```
 GameScene.update(delta)
-  ├─ RunState.update(delta)          → elapsedMs, check milestones
-  ├─ Player.update()                 → movement, auto-attack
-  ├─ SpawnDirector.tick()            → maybe spawn enemy
+  ├─ if (RunState.isPaused) return
+  ├─ RunState.update(delta)          → elapsedMs, check boss milestones
+  ├─ BossDirector.tick()             → spawn mini/main boss if due
+  ├─ Player.update()                 → movement, auto-attack, XP radius collect
+  ├─ SpawnDirector.tick()            → normal enemies (if no boss active)
   ├─ Enemies[].update()              → chase AI (skip if hit-stunned)
-  ├─ Projectiles[]                   → move, overlap enemies
-  ├─ XpGems[]                        → magnet toward player
+  ├─ XpGems[]                        → idle; vacuum tween if active
   ├─ Camera follow player
   └─ Hud.sync(RunState, Player)
 ```

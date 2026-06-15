@@ -101,13 +101,62 @@ The player enters a **large overworld map**, survives as long as possible while 
 | UP-03 | Quick Cast | −15% attack cooldown |
 | UP-04 | Wide Arc | Projectiles pierce 1 extra enemy |
 | UP-05 | Vitality | +20 max HP (heal same amount) |
-| UP-06 | Magnet Charm | Increased XP pickup radius |
+| UP-06 | Magnet Charm | +40% XP pickup radius (stacks) |
 | UP-07 | Heavy Hit | +25% projectile damage |
 | UP-08 | Orbiting Blade | Passive damage aura (VS-style) |
 
 > Pool can expand later. First implementation needs at least 6 upgrades and random 3-choice picker.
 
-### 5.3 Current gameplay baseline
+### 5.4 XP pickup & magnet (decided)
+
+| ID | Requirement | Priority | Status |
+|----|-------------|----------|--------|
+| XP-01 | **Default pickup radius** around player — gems auto-collect when inside radius (no walk-over required for nearby gems) | P0 | 🔲 Not started |
+| XP-02 | **Magnet Charm upgrade** increases pickup radius (stackable ranks) | P0 | 🔲 Not started |
+| XP-03 | **Vacuum item drop** — rare pickup that instantly pulls **all** XP gems on the map to the player | P0 | 🔲 Not started |
+| XP-04 | Vacuum item has distinct sprite + brief VFX on activation | P1 | 🔲 Not started |
+| XP-05 | XP gems remain on ground until collected (VS-style) | P0 | 🔲 Not started |
+
+**Default radius:** small but usable (~48–64 px); exact value tuned in playtest.
+
+### 5.5 Bosses & win condition (decided)
+
+| ID | Requirement | Priority | Status |
+|----|-------------|----------|--------|
+| BOSS-01 | **Mini-boss** spawns at every **5-minute** mark (5:00, 10:00, 15:00, 20:00, 25:00) | P0 | 🔲 Not started |
+| BOSS-02 | Mini-bosses are tougher, unique sprite, announce arrival (toast + SFX) | P0 | 🔲 Not started |
+| BOSS-03 | Mini-boss count scales (5 min = first, each subsequent is harder) | P1 | 🔲 Not started |
+| BOSS-04 | **Main boss** spawns at **30:00** | P0 | 🔲 Not started |
+| BOSS-05 | Defeating main boss = **level win** — run ends in victory (not death) | P0 | 🔲 Not started |
+| BOSS-06 | **Victory screen** shows time, level, kills, score | P0 | 🔲 Not started |
+| BOSS-07 | Only **one level** for now ("Eldergrove"); multi-level support deferred | P0 | 🔲 N/A (design) |
+| BOSS-08 | Normal enemy spawn pauses or slows during mini-boss / boss fights | P1 | 🔲 Not started |
+
+**Run outcomes:** Death (game over) · Victory (30 min boss defeated) · *(future: quit to menu)*
+
+### 5.6 Pause menu (decided)
+
+| ID | Requirement | Priority | Status |
+|----|-------------|----------|--------|
+| PAUSE-01 | **ESC opens pause menu** (does not immediately exit) | P0 | 🔲 Not started |
+| PAUSE-02 | Pause **freezes** gameplay (physics, timer, spawns) | P0 | 🔲 Not started |
+| PAUSE-03 | Options: **Resume** and **Exit to Main Menu** | P0 | 🔲 Not started |
+| PAUSE-04 | Exit to menu requires no extra confirm (or single confirm — tune in playtest) | P1 | 🔲 Not started |
+| PAUSE-05 | Pause works during gameplay; disabled during level-up picker (or ESC ignored there) | P1 | 🔲 Not started |
+
+### 5.7 Audio (decided — in scope)
+
+| ID | Requirement | Priority | Status |
+|----|-------------|----------|--------|
+| AUD-01 | Background **chiptune** music loop during gameplay | P1 | 🔲 Not started |
+| AUD-02 | Menu music (can reuse or separate track) | P2 | 🔲 Not started |
+| AUD-03 | SFX: projectile fire, enemy hit, enemy death | P1 | 🔲 Not started |
+| AUD-04 | SFX: player hurt, level up, upgrade pick | P1 | 🔲 Not started |
+| AUD-05 | SFX: mini-boss spawn, boss spawn, victory fanfare | P1 | 🔲 Not started |
+| AUD-06 | SFX: vacuum item pickup, XP gem collect (subtle) | P2 | 🔲 Not started |
+| AUD-07 | Procedural or royalty-free chiptune (Web Audio / generated tones acceptable for v1) | P1 | 🔲 Not started |
+
+### 5.8 Current gameplay baseline
 
 - Score on kill
 - Spawn interval decreases every 5 kills
@@ -148,7 +197,8 @@ The player enters a **large overworld map**, survives as long as possible while 
 | EN-03 | Bat — fast, low HP | P0 | ✅ Done |
 | EN-04 | Spawn rate scales with **time survived** AND player level | P1 | 🔲 Not started |
 | EN-05 | Enemy cap to prevent performance collapse (e.g., max 80 on screen) | P1 | 🔲 Not started |
-| EN-06 | Elite / tinted variants at time milestones (10 min, 20 min…) | P2 | 🔲 Not started |
+| EN-06 | Mini-boss entities at 5-min intervals (see BOSS-*) | P0 | 🔲 Not started |
+| EN-07 | Main boss entity at 30:00 | P0 | 🔲 Not started |
 
 ---
 
@@ -161,8 +211,10 @@ The player enters a **large overworld map**, survives as long as possible while 
 | UI-03 | **XP bar** with level number | P0 | 🔲 Not started |
 | UI-04 | Score / kill count | P1 | ✅ Partial |
 | UI-05 | Level-up modal (3 upgrade cards, SNES window style) | P0 | 🔲 Not started |
-| UI-06 | Game over summary panel with timer + stats | P1 | 🔲 Partial |
+| UI-06 | Game over / **victory** summary panel with timer + stats | P1 | 🔲 Partial |
 | UI-07 | Main menu (Start New Game) | P0 | ✅ Done |
+| UI-08 | **Pause menu** overlay (Resume / Exit to Main Menu) | P0 | 🔲 Not started |
+| UI-09 | Boss arrival toast ("Mini-Boss!" / "Boss approaching!") | P1 | 🔲 Not started |
 
 ---
 
@@ -173,7 +225,7 @@ The player enters a **large overworld map**, survives as long as possible while 
 | WASD / Arrow keys | Move | ✅ |
 | (automatic) | Attack nearest enemy | ✅ |
 | 1 / 2 / 3 or click | Select upgrade on level-up screen | 🔲 |
-| ESC | Pause → main menu (confirm?) | ✅ (no confirm) |
+| ESC | **Pause menu** → Resume or Exit to Main Menu | 🔲 |
 | R | Retry after game over | ✅ |
 
 ---
@@ -191,7 +243,9 @@ The player enters a **large overworld map**, survives as long as possible while 
 | TECH-07 | **RunState** — timer, XP, level, upgrades for current run | 🔲 |
 | TECH-08 | **UpgradeRegistry** — data-driven upgrade definitions | 🔲 |
 | TECH-09 | **SpawnDirector** — time-based spawn curve | 🔲 |
-| TECH-10 | Automated smoke tests for scene boot | 🔲 |
+| TECH-10 | **BossDirector** — 5-min mini-boss + 30-min main boss schedule | 🔲 |
+| TECH-11 | **AudioManager** — music + SFX playback | 🔲 |
+| TECH-12 | Automated smoke tests for scene boot | 🔲 |
 
 ---
 
@@ -202,48 +256,66 @@ The player enters a **large overworld map**, survives as long as possible while 
 - Hand-drawn asset pipeline (stay procedural until art pass stabilizes)
 - Mobile touch controls
 - Full LTTP dungeon interiors / story quests
-- Boss fights (future phase)
+- **Multiple levels** (one Eldergrove level only until post-MVP)
+- Full LTTP-style item/inventory system
 
 ---
 
 ## 12. Resolved Product Decisions
 
-These were open questions; user has now decided:
-
 | Question | Decision |
 |----------|----------|
 | Art direction | **Link to the Past** overworld |
-| Map scope | **Large scrollable map**, not single screen |
+| Map scope | **Large scrollable map** (~3×3 screens — **confirmed sufficient for now**) |
 | Progression | **Vampire Survivors-style** — XP, level-ups, upgrade picks |
 | Timer | **Yes** — track run duration |
 | Combat feel | **Stronger hit impact**, especially **enemy reactions** |
 | Auto-attack | **Keep** (aligns with VS) |
+| Run end — death | Player HP reaches 0 → game over |
+| Run end — win | **Main boss at 30:00**; defeating it **ends level in victory** |
+| Mini-bosses | **Every 5 minutes** (5, 10, 15, 20, 25) — VS-style |
+| Level count | **One level** (Eldergrove) for now; more levels later |
+| Pause / ESC | **Pause menu** with **Resume** and **Exit to Main Menu** |
+| XP pickup | **Default radius** + **Magnet Charm upgrade** + **vacuum item drop** pulls all XP |
+| Audio | **In scope** — chiptune music + combat/UI SFX |
 
 ---
 
-## 13. Remaining Open Questions
+## 13. Future Open Questions
 
-1. **Run end condition** — Pure endless until death, or hard cap (e.g., 30 min boss)?
-2. **Pause menu** — Should ESC pause with resume, or go straight to main menu?
-3. **Map size** — 3×3 screens (~2880×1920) or bigger (4×4+)?
-4. **XP magnet** — Auto-collect within radius from start, or only after upgrade?
-5. **Audio** — Add chiptune + hit SFX in next phase?
+1. **Exit confirm** — Should "Exit to Main Menu" ask "Are you sure?" or exit immediately?
+2. **Boss loot** — Do mini-bosses drop guaranteed vacuum items or only chance drops?
+3. **Victory flow** — After 30 min win, return to menu only, or show "Level Complete" with stats + retry?
+4. **Level 2+** — Same map reskin, or entirely new tilemaps per zone?
 
 ---
 
-## 14. Acceptance Criteria (MVP for next milestone)
+## 14. Acceptance Criteria
 
-The next playable milestone is done when **all** of the following are true:
+### Milestone A — Core loop (MVP)
 
 - [ ] Player moves across a map at least **3× viewport** in width and height
 - [ ] Camera follows player and does not show void outside world
 - [ ] Run timer visible and accurate from 0:00
 - [ ] Killing enemies drops XP; bar fills and triggers level-up
+- [ ] **Default XP pickup radius** works; gems collect without exact walk-over
 - [ ] Level-up shows 3 upgrades; picking one applies effect immediately
 - [ ] Enemies react to hits with knockback + visible hit state (not just tint)
 - [ ] Art pass moves hero/tiles closer to LTTP overworld palette
+- [ ] **Pause menu** (ESC → Resume / Exit to Menu)
 - [ ] Game over screen shows survival time + level + kills
 - [ ] No regressions: menu → game → menu flow still works
+
+### Milestone B — Full Eldergrove level (VS-complete)
+
+- [ ] Mini-boss spawns at 5:00, 10:00, 15:00, 20:00, 25:00
+- [ ] Main boss spawns at 30:00
+- [ ] Defeating main boss triggers **victory** and ends the run
+- [ ] Victory screen shows full run stats
+- [ ] **Vacuum item** drops and pulls all XP to player
+- [ ] **Magnet Charm** upgrade increases pickup radius
+- [ ] Spawn difficulty driven by survival time
+- [ ] Audio: gameplay music + core SFX (hit, death, level up, boss)
 
 ---
 
